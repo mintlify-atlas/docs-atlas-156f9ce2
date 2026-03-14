@@ -1,0 +1,172 @@
+---
+title: 'Scrape'
+description: 'Fetch and extract web page content from URLs'
+icon: 'globe'
+---
+
+## Overview
+
+The Scrape tool fetches web page content from a URL and returns clean, processed information. It supports both HTTP requests and browser DOM extraction, with optional LLM-based content filtering.
+
+## Function Signature
+
+```python
+async def scrape_tool(
+    url: str,
+    query: str | None = None,
+    use_dom: bool | str = False,
+    use_sampling: bool | str = True,
+    ctx: Context = None,
+) -> str
+```
+
+## Parameters
+
+<ParamField path="url" type="string" required>
+  The URL of the web page to scrape. Must be a valid HTTP/HTTPS URL.
+</ParamField>
+
+<ParamField path="query" type="string" default="None">
+  Optional query to focus extraction on specific information. When provided with `use_sampling=True`, the LLM will focus on extracting content relevant to this query.
+  
+  **Example:** `"pricing information"`, `"contact details"`, `"product specifications"`
+</ParamField>
+
+<ParamField path="use_dom" type="boolean" default="false">
+  When `True`, extracts content from the active browser tab's DOM instead of making an HTTP request. This is useful when:
+  - The website blocks HTTP requests
+  - You need to scrape content that requires JavaScript rendering
+  - The page is behind authentication
+  
+  **Requirements:** The URL must already be open in a supported browser (Chrome, Edge, Firefox).
+</ParamField>
+
+<ParamField path="use_sampling" type="boolean" default="true">
+  When `True`, processes the raw scraped content with an LLM to extract meaningful information and remove boilerplate (navigation menus, cookie banners, ads, footer links).
+  
+  When `False`, returns the raw content without processing.
+</ParamField>
+
+## Return Value
+
+Returns a string containing:
+- The URL that was scraped
+- The extracted content (either LLM-processed or raw, depending on `use_sampling`)
+
+When `use_dom=True`, also includes scroll status indicators:
+- Header: "Reached top" or "Scroll up to see more"
+- Footer: "Reached bottom" or "Scroll down to see more"
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Basic HTTP Scrape
+# Fetch and process a web page with default settings
+result = await scrape_tool(
+    url="https://example.com/blog/article"
+)
+# Returns LLM-processed, clean content
+```
+
+```python Focused Extraction
+# Extract specific information using a query
+result = await scrape_tool(
+    url="https://example.com/pricing",
+    query="subscription plans and pricing tiers"
+)
+# LLM focuses on pricing-related content
+```
+
+```python DOM Extraction
+# Scrape from active browser tab (useful for JS-heavy sites)
+result = await scrape_tool(
+    url="https://app.example.com/dashboard",
+    use_dom=True
+)
+# Extracts from the browser's rendered DOM
+```
+
+```python Raw Content
+# Get unprocessed content without LLM filtering
+result = await scrape_tool(
+    url="https://example.com/data",
+    use_sampling=False
+)
+# Returns raw HTML/text content
+```
+
+</CodeGroup>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+
+<Card title="Research & Information Gathering" icon="magnifying-glass">
+  Extract article content, documentation, or research papers for analysis
+</Card>
+
+<Card title="Price Monitoring" icon="chart-line">
+  Track pricing information, product availability, or market data
+</Card>
+
+<Card title="Content Aggregation" icon="layer-group">
+  Collect blog posts, news articles, or forum discussions from multiple sources
+</Card>
+
+<Card title="Authenticated Content" icon="lock">
+  Scrape content from authenticated sessions using browser DOM extraction
+</Card>
+
+</CardGroup>
+
+## Mode Comparison
+
+| Feature | HTTP Mode (`use_dom=False`) | DOM Mode (`use_dom=True`) |
+|---------|----------------------------|---------------------------|
+| Speed | Fast | Slower (requires browser) |
+| JavaScript Support | No | Yes |
+| Authentication | No | Yes (if logged in) |
+| Scroll Detection | No | Yes |
+| Requirement | URL only | Must be open in browser |
+
+## Best Practices
+
+<AccordionGroup>
+
+<Accordion title="When to use use_dom=True">
+  - The website returns different content to HTTP clients vs browsers
+  - The page requires JavaScript to render content
+  - You need to scrape authenticated/session-based content
+  - You want to know the current scroll position
+</Accordion>
+
+<Accordion title="When to use use_sampling=False">
+  - You need the complete raw HTML/text
+  - You want to perform your own content processing
+  - The LLM filtering is removing content you need
+  - You're scraping structured data (JSON, XML, CSV)
+</Accordion>
+
+<Accordion title="Optimizing with query parameter">
+  The `query` parameter helps the LLM focus on relevant content:
+  - Be specific: "pricing plans" instead of "information"
+  - Use keywords the page likely contains
+  - Combine with `use_sampling=True` for best results
+</Accordion>
+
+</AccordionGroup>
+
+## Error Handling
+
+Common errors and solutions:
+
+- **"No DOM information found"**: The URL is not open in a browser. Open it first, then use `use_dom=True`
+- **HTTP errors**: The website may be blocking requests. Try `use_dom=True` instead
+- **Empty content**: The page may be JavaScript-heavy. Use `use_dom=True`
+
+## Related Tools
+
+- [Snapshot](/tools/snapshot) - Capture browser screenshots and UI elements
+- [Scroll](/tools/scroll) - Navigate long web pages when using DOM mode
+- [Click](/tools/click) - Interact with web page elements

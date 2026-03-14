@@ -1,80 +1,326 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: 'Quickstart'
+description: 'Get started with Windows-MCP in under 5 minutes'
+icon: 'rocket'
 ---
 
-## Get started in three steps
+Get Windows-MCP running in your MCP client and start automating Windows tasks with AI.
 
-Get your documentation site running locally and make your first customization.
+## Prerequisites
 
-### Step 1: Set up your local environment
+Before you begin, ensure you have:
 
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+- **Windows 7 or later** (Windows 10/11 recommended)
+- **Python 3.13+** installed
+- **UV package manager** (install with `pip install uv` or `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+- An MCP-compatible client (Claude Desktop, Perplexity Desktop, Gemini CLI, etc.)
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+When installing Windows-MCP for the first time, the initial setup may take 1-2 minutes to install dependencies. If the server times out on first run, simply restart your MCP client.
 </Note>
+
+## Installation
+
+<Steps>
+  <Step title="Install an MCP Client">
+    Download and install an MCP-compatible client. We'll use [Claude Desktop](https://claude.ai/download) as an example.
+
+    ```bash
+    # Claude Desktop is available for download at claude.ai/download
+    ```
+  </Step>
+
+  <Step title="Configure Windows-MCP">
+    Add Windows-MCP to your MCP client's configuration file.
+
+    **For Claude Desktop**, edit `claude_desktop_config.json`:
+
+    <CodeGroup>
+    ```json PyPI Installation (Recommended)
+    {
+      "mcpServers": {
+        "windows-mcp": {
+          "command": "uvx",
+          "args": [
+            "windows-mcp"
+          ]
+        }
+      }
+    }
+    ```
+
+    ```json Source Installation
+    {
+      "mcpServers": {
+        "windows-mcp": {
+          "command": "uv",
+          "args": [
+            "--directory",
+            "C:\\path\\to\\Windows-MCP",
+            "run",
+            "windows-mcp"
+          ]
+        }
+      }
+    }
+    ```
+    </CodeGroup>
+
+    <Note>
+    **Claude Desktop (Windows Store/MSIX):** The MSIX-packaged version virtualizes `%APPDATA%`. Your config file is located at:
+    
+    `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
+    
+    The "Edit Config" button may open the wrong file. Use the full path above instead.
+    </Note>
+
+    <Warning>
+    **MSIX users:** Electron apps don't inherit PATH. Use the **full absolute path** to `uv.exe`:
+
+    ```json
+    {
+      "mcpServers": {
+        "windows-mcp": {
+          "command": "C:\\Users\\YourUsername\\.local\\bin\\uv.exe",
+          "args": ["windows-mcp"]
+        }
+      }
+    }
+    ```
+
+    Find `uv.exe` by running `where uv` in PowerShell. Save the config file as **UTF-8 without BOM** (PowerShell's `Set-Content -Encoding UTF8` adds a BOM that breaks JSON parsing).
+    </Warning>
+  </Step>
+
+  <Step title="Launch Your MCP Client">
+    Open Claude Desktop (or your chosen MCP client). Windows-MCP will start automatically.
+
+    Look for the MCP server indicator in your client. In Claude Desktop, you'll see a 🔌 icon when Windows-MCP is connected.
+  </Step>
+
+  <Step title="Verify Installation">
+    Test Windows-MCP with a simple command:
+
+    **In Claude Desktop, type:**
+    ```
+    Take a screenshot and tell me what's on my desktop
+    ```
+
+    Claude will use the `Snapshot` tool to capture your desktop state and describe what it sees.
+  </Step>
+</Steps>
+
+## Your First Automation
+
+Let's try a more advanced example that showcases Windows-MCP's capabilities:
+
+<Steps>
+  <Step title="Open Notepad">
+    **Ask your AI client:**
+    ```
+    Open Notepad and type "Hello from Windows-MCP!"
+    ```
+
+    Behind the scenes, Windows-MCP will:
+    1. Use the `App` tool to launch Notepad
+    2. Use the `Snapshot` tool to locate the text area
+    3. Use the `Type` tool to enter the text
+  </Step>
+
+  <Step title="Take a Screenshot">
+    **Ask your AI client:**
+    ```
+    Take a screenshot with the cursor visible
+    ```
+
+    The AI will use:
+    ```json
+    Snapshot tool with use_vision=True
+    ```
+
+    You'll receive both the screenshot and a structured list of all interactive UI elements.
+  </Step>
+
+  <Step title="Navigate Your File System">
+    **Ask your AI client:**
+    ```
+    List all files on my Desktop
+    ```
+
+    The AI will use the `FileSystem` tool in list mode to enumerate your Desktop files.
+  </Step>
+</Steps>
+
+## Available Tools
+
+Windows-MCP exposes 16 powerful tools for Windows automation:
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera">
+    Capture desktop state with interactive elements, windows, and optional screenshots
+  </Card>
+  <Card title="Click" icon="hand-pointer">
+    Click at coordinates or UI element labels (left, right, middle, single, double)
+  </Card>
+  <Card title="Type" icon="keyboard">
+    Type text at specified locations with options to clear, position caret, and submit
+  </Card>
+  <Card title="Scroll" icon="arrows-up-down">
+    Scroll vertically or horizontally at coordinates or current mouse position
+  </Card>
+  <Card title="Move" icon="arrow-pointer">
+    Move cursor or drag-and-drop to coordinates
+  </Card>
+  <Card title="Shortcut" icon="bolt">
+    Execute keyboard shortcuts (Ctrl+C, Alt+Tab, Win+R, etc.)
+  </Card>
+  <Card title="App" icon="window-restore">
+    Launch applications, resize windows, and switch between apps
+  </Card>
+  <Card title="PowerShell" icon="terminal">
+    Execute PowerShell commands with timeout control
+  </Card>
+  <Card title="FileSystem" icon="folder-open">
+    Read, write, copy, move, delete, list, search files and directories
+  </Card>
+  <Card title="Scrape" icon="globe">
+    Fetch web content from URLs or extract DOM from active browser tabs
+  </Card>
+  <Card title="MultiSelect" icon="list-check">
+    Select multiple items (files, checkboxes) with Ctrl key support
+  </Card>
+  <Card title="MultiEdit" icon="pen-to-square">
+    Enter text into multiple input fields simultaneously
+  </Card>
+  <Card title="Clipboard" icon="clipboard">
+    Read or set Windows clipboard content
+  </Card>
+  <Card title="Process" icon="microchip">
+    List running processes or terminate them by PID or name
+  </Card>
+  <Card title="Notification" icon="bell">
+    Send Windows toast notifications
+  </Card>
+  <Card title="Registry" icon="database">
+    Read, write, delete, or list Windows Registry keys and values
+  </Card>
+</CardGroup>
+
+## Common Use Cases
+
+<CodeGroup>
+```plaintext Web Automation
+"Open Chrome, navigate to github.com, and search for 'windows-mcp'"
+
+Tools used:
+1. App (launch Chrome)
+2. Snapshot (find address bar)
+3. Type (enter URL)
+4. Snapshot (find search box)
+5. Type (enter search term)
+```
+
+```plaintext File Management
+"Create a folder called 'Projects' on my Desktop and move all .txt files into it"
+
+Tools used:
+1. FileSystem (list Desktop files)
+2. FileSystem (create directory)
+3. FileSystem (move files)
+```
+
+```plaintext System Control
+"Take a screenshot, then open Task Manager and show me the top 5 processes by memory usage"
+
+Tools used:
+1. Snapshot (capture desktop)
+2. Shortcut (Ctrl+Shift+Esc)
+3. Process (list processes)
+```
+</CodeGroup>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Server timeout on first launch">
+    **Issue:** Windows-MCP times out during initial installation.
+    
+    **Solution:** This is normal. Dependencies are being installed (can take 1-2 minutes). Restart your MCP client after the first timeout.
+  </Accordion>
+
+  <Accordion title="MSIX spawn ENOENT error">
+    **Issue:** Claude Desktop (Windows Store) shows `spawn uvx ENOENT`.
+    
+    **Solution:** Use the full absolute path to `uv.exe` instead of `uvx`:
+    
+    ```json
+    {
+      "command": "C:\\Users\\YourUsername\\.local\\bin\\uv.exe",
+      "args": ["windows-mcp"]
+    }
+    ```
+    
+    Find your `uv.exe` path: `where uv` in PowerShell.
+  </Accordion>
+
+  <Accordion title="Config file not found">
+    **Issue:** Can't find `claude_desktop_config.json`.
+    
+    **Solution:**
+    - **Standard install:** `%APPDATA%\Claude\claude_desktop_config.json`
+    - **MSIX install:** `%LOCALAPPDATA%\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`
+  </Accordion>
+
+  <Accordion title="JSON parsing error">
+    **Issue:** Config file throws parsing errors.
+    
+    **Solution:** Ensure the file is saved as **UTF-8 without BOM**. PowerShell's `Set-Content -Encoding UTF8` adds a BOM. Use a text editor like VS Code or Notepad++ to save without BOM.
+  </Accordion>
+
+  <Accordion title="App tool not working with non-English Windows">
+    **Issue:** App tool fails on non-English Windows.
+    
+    **Solution:** Windows-MCP requires English as the default Windows language. If you use another language, disable the App tool in your configuration or switch Windows to English.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Core Concepts" icon="book" href="/concepts/mcp-protocol">
+    Learn about Windows-MCP's architecture and how tools work together
+  </Card>
+  <Card title="Tool Reference" icon="wrench" href="/tools/overview">
+    Explore all 16 tools with detailed parameters and examples
+  </Card>
+  <Card title="Advanced Usage" icon="graduation-cap" href="/configuration/modes">
+    Discover local vs remote modes, transport options, and advanced configurations
+  </Card>
+  <Card title="Security" icon="shield" href="/security">
+    Understand security considerations and best practices
+  </Card>
+</CardGroup>
+
+## Disable Telemetry (Optional)
+
+Windows-MCP collects anonymized usage data to improve the server. No personal information, tool arguments, or outputs are tracked.
+
+To disable telemetry, add an environment variable to your configuration:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+<Tip>
+For more MCP client integrations (Perplexity Desktop, Gemini CLI, Qwen Code, Codex CLI), see the [Installation Guide](/installation).
+</Tip>

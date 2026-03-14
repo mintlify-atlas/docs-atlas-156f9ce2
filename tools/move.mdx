@@ -1,0 +1,237 @@
+---
+title: 'Move'
+description: 'Move mouse cursor or perform drag-and-drop operations'
+icon: 'up-down-left-right'
+---
+
+## Overview
+
+The **Move** tool repositions the mouse cursor to specified coordinates or labeled UI elements. It also supports drag-and-drop operations by holding the mouse button during movement.
+
+<Tip>
+Use Move for hover effects, revealing tooltips, or performing drag-and-drop between locations.
+</Tip>
+
+## Function Signature
+
+```python
+def move_tool(
+    loc: list[int] | None = None,
+    label: int | None = None,
+    drag: bool | str = False,
+    ctx: Context = None,
+) -> str
+```
+
+## Parameters
+
+<ParamField path="loc" type="list[int]" default={null}>
+  Target coordinates as `[x, y]` in virtual desktop coordinate space. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="label" type="int" default={null}>
+  UI element label/ID from Snapshot output. Automatically resolves to coordinates. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="drag" type="bool | str" default={false}>
+  Perform drag-and-drop:
+  - `false`: Simple cursor move (hover)
+  - `true`: Drag from current position to target (holds left mouse button during move)
+</ParamField>
+
+## Coordinate System
+
+Move uses the **virtual desktop coordinate space**:
+
+- Coordinates from Snapshot work directly
+- Multi-monitor setups span entire virtual desktop
+- Origin `(0,0)` is typically the top-left of the primary monitor
+
+<CardGroup cols={2}>
+  <Card title="Hover" icon="hand-pointer">
+    `drag: false` moves cursor without clicking. Useful for tooltips and hover menus.
+  </Card>
+  <Card title="Drag" icon="hand-back-fist">
+    `drag: true` performs drag-and-drop from current cursor position to target.
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Move Cursor to Coordinates
+
+```json
+{
+  "loc": [500, 300],
+  "drag": false
+}
+```
+
+Moves cursor to `(500, 300)` without clicking. Useful for revealing tooltips.
+
+### Move to Element by Label
+
+```json
+{
+  "label": 18,
+  "drag": false
+}
+```
+
+Moves cursor to the center of the UI element with label `18`.
+
+### Drag-and-Drop by Coordinates
+
+```json
+{
+  "loc": [800, 400],
+  "drag": true
+}
+```
+
+Drags from the current cursor position to `(800, 400)`. Use this after positioning the cursor on the item to drag.
+
+### Drag File to Folder
+
+1. First, move to or click the file to start the drag:
+   ```json
+   {"loc": [300, 200]}
+   ```
+
+2. Then drag to the target folder:
+   ```json
+   {
+     "loc": [700, 500],
+     "drag": true
+   }
+   ```
+
+### Hover for Tooltip
+
+```json
+{
+  "label": 25,
+  "drag": false
+}
+```
+
+Move cursor over element `25` to reveal its tooltip or hover menu.
+
+## Common Patterns
+
+### Reveal Tooltip
+
+1. Call **Snapshot** to identify the element
+2. Call **Move** with the element's label and `drag: false`
+3. Call **Wait** briefly for tooltip to appear
+4. Call **Snapshot** with `use_vision: true` to see the tooltip
+
+### Drag File Between Folders
+
+1. Call **Click** on the file to select it
+2. Call **Move** with `drag: false` to position cursor on the file
+3. Call **Move** to the destination folder with `drag: true`
+
+### Drag to Reorder List Items
+
+1. Call **Snapshot** to get item positions
+2. Position cursor on the item to drag with **Click** or **Move**
+3. Call **Move** to the target position with `drag: true`
+
+### Select Text by Dragging
+
+1. Call **Click** at the start position to place cursor
+2. Call **Move** to the end position with `drag: true`
+
+Note: For text selection, **Shortcut** with `Ctrl+A` or triple-click is often more reliable.
+
+### Multi-Step Drag
+
+For complex drag operations with intermediate positions:
+
+1. **Move** to start position
+2. **Move** with `drag: true` to intermediate waypoint
+3. **Move** with `drag: true` to final destination
+
+Note: Windows-MCP doesn't support releasing the button mid-drag, so this creates one continuous drag path.
+
+## Hover vs Click
+
+| Action | Tool | Parameters |
+|--------|------|------------|
+| Hover without clicking | **Move** | `drag: false` |
+| Hover without clicking | **Click** | `clicks: 0` |
+| Click | **Click** | `clicks: 1` |
+| Drag | **Move** | `drag: true` |
+
+Both `Move` with `drag: false` and `Click` with `clicks: 0` move the cursor without clicking.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="'Either loc or label must be provided' error">
+    You must specify exactly one of `loc` or `label`. Don't provide both or neither.
+  </Accordion>
+
+  <Accordion title="'Failed to find element with label X' error">
+    The label doesn't exist in the current desktop state:
+    - Call Snapshot again to refresh element labels
+    - UI may have changed since last Snapshot
+    - Element may not be visible
+  </Accordion>
+
+  <Accordion title="'Desktop state is empty' error">
+    You tried to use `label` without calling Snapshot first. Always call Snapshot before using element labels.
+  </Accordion>
+
+  <Accordion title="'loc must be a list of exactly 2 integers' error">
+    The `loc` parameter must be an array of two numbers: `[x, y]`.
+    - Correct: `"loc": [500, 300]`
+    - Wrong: `"loc": [500]` or `"loc": 500`
+  </Accordion>
+
+  <Accordion title="Drag doesn't work">
+    Possible causes:
+    - Target application doesn't support drag-and-drop
+    - Current cursor position is not on a draggable item (position cursor first)
+    - Application requires elevated privileges
+    - Drag distance is too short (some apps require minimum drag distance)
+  </Accordion>
+
+  <Accordion title="Cursor moves but drag fails">
+    Ensure cursor is positioned correctly before drag:
+    1. Call **Click** or **Move** on the draggable item first
+    2. Then call **Move** with `drag: true` to destination
+  </Accordion>
+
+  <Accordion title="Tooltip doesn't appear on hover">
+    Some applications have tooltip delays:
+    - Call **Wait** with `duration: 1` or `2` after Move
+    - Verify the element supports tooltips
+    - Check if tooltips are enabled in application settings
+  </Accordion>
+
+  <Accordion title="Multi-monitor cursor position issues">
+    On multi-monitor setups:
+    - Use coordinates from a recent Snapshot
+    - Verify monitor arrangement hasn't changed
+    - Negative coordinates are valid for monitors positioned left/above primary
+  </Accordion>
+</AccordionGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera" href="/tools/snapshot">
+    Get coordinates and labels for UI elements
+  </Card>
+  <Card title="Click" icon="mouse-pointer" href="/tools/click">
+    Click at coordinates or hover with clicks: 0
+  </Card>
+  <Card title="Wait" icon="clock" href="/tools/wait">
+    Pause after Move to allow tooltips or hover menus to appear
+  </Card>
+  <Card title="Scroll" icon="arrows-up-down" href="/tools/scroll">
+    Scroll at current mouse position after Move
+  </Card>
+</CardGroup>

@@ -1,0 +1,220 @@
+---
+title: 'MultiSelect'
+description: 'Select multiple items or perform multiple clicks'
+icon: 'square-check'
+---
+
+## Overview
+
+The MultiSelect tool selects multiple UI elements in a single operation. It can perform Ctrl+Click multi-selection (for files, checkboxes, list items) or execute multiple independent clicks.
+
+## Function Signature
+
+```python
+def multi_select_tool(
+    locs: list[list[int]] | None = None,
+    labels: list[int] | None = None,
+    press_ctrl: bool | str = True,
+    ctx: Context = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="locs" type="list[list[int]]" default="None">
+  List of coordinate pairs to click. Each element is `[x, y]`.
+  
+  **Example:** `[[100, 200], [150, 300], [200, 400]]`
+  
+  Either `locs` or `labels` must be provided (not both).
+</ParamField>
+
+<ParamField path="labels" type="list[int]" default="None">
+  List of UI element labels/IDs from a previous Snapshot call. The tool automatically resolves each label to coordinates.
+  
+  **Example:** `[12, 15, 18]`
+  
+  **Requirements:** Desktop state must be available (call Snapshot first).
+  
+  Either `locs` or `labels` must be provided (not both).
+</ParamField>
+
+<ParamField path="press_ctrl" type="boolean" default="true">
+  Controls the selection behavior:
+  - `True`: Holds Ctrl while clicking (multi-select mode for files, checkboxes, list items)
+  - `False`: Performs independent clicks without Ctrl (click multiple buttons/elements)
+</ParamField>
+
+## Return Value
+
+Returns a string confirmation listing all selected element coordinates:
+
+```
+Multi-selected elements at:
+(100,200)
+(150,300)
+(200,400)
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Select Multiple Files (by coordinates)
+# Select three files in File Explorer using coordinates
+result = multi_select_tool(
+    locs=[[120, 300], [120, 350], [120, 400]],
+    press_ctrl=True
+)
+# Files are selected together (Ctrl+Click behavior)
+```
+
+```python Select Multiple Files (by labels)
+# First, take a snapshot to get element labels
+snapshot_tool()
+
+# Then select files using their labels
+result = multi_select_tool(
+    labels=[15, 18, 22],  # Labels from snapshot
+    press_ctrl=True
+)
+# Files with labels 15, 18, 22 are selected
+```
+
+```python Check Multiple Checkboxes
+# Check several checkboxes in a settings dialog
+result = multi_select_tool(
+    locs=[
+        [300, 150],  # "Enable feature A"
+        [300, 200],  # "Enable feature B"
+        [300, 250]   # "Enable feature C"
+    ],
+    press_ctrl=False  # Independent clicks
+)
+```
+
+```python Click Multiple Buttons
+# Click several "Download" buttons on a page
+result = multi_select_tool(
+    labels=[25, 30, 35],
+    press_ctrl=False  # Each button clicked independently
+)
+```
+
+</CodeGroup>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+
+<Card title="Bulk File Operations" icon="files">
+  Select multiple files or folders for copy, move, or delete operations
+</Card>
+
+<Card title="Form Filling" icon="square-check">
+  Check multiple checkboxes or select multiple list items simultaneously
+</Card>
+
+<Card title="Batch Actions" icon="layer-group">
+  Click multiple buttons, links, or controls in sequence
+</Card>
+
+<Card title="List Selection" icon="list">
+  Multi-select items in lists, tables, or grid views
+</Card>
+
+</CardGroup>
+
+## locs vs labels: When to Use Which
+
+<AccordionGroup>
+
+<Accordion title="Use locs when...">
+  **Advantages:**
+  - You know the exact coordinates
+  - Elements are in fixed positions
+  - No Snapshot call required (faster)
+  - Working with simple, static layouts
+  
+  **Example:** Selecting files in a grid that hasn't changed
+</Accordion>
+
+<Accordion title="Use labels when...">
+  **Advantages:**
+  - Element positions may vary
+  - Working with dynamic content
+  - Want semantic targeting ("select the file named X")
+  - More resilient to UI changes
+  
+  **Requirements:** Must call Snapshot first to populate desktop state
+  
+  **Example:** Selecting specific emails by their labels in an inbox
+</Accordion>
+
+</AccordionGroup>
+
+## press_ctrl Behavior
+
+| Value | Behavior | Use Case |
+|-------|----------|----------|
+| `True` (default) | Holds Ctrl during all clicks | Multi-selecting files, list items, checkboxes that support Ctrl+Click |
+| `False` | Independent clicks without Ctrl | Clicking multiple buttons, toggling switches, separate actions |
+
+## Best Practices
+
+1. **Call Snapshot first when using labels**
+   ```python
+   snapshot_tool()  # Populate desktop state
+   multi_select_tool(labels=[10, 12, 15])
+   ```
+
+2. **Use consistent coordinate spacing for locs**
+   ```python
+   # Good: Regular grid pattern
+   locs = [[100, 200], [100, 250], [100, 300]]
+   
+   # Harder to maintain: Irregular positions
+   locs = [[123, 187], [98, 264], [145, 312]]
+   ```
+
+3. **Choose the right press_ctrl value**
+   - Files/folders: `press_ctrl=True`
+   - Checkboxes (independent): `press_ctrl=False`
+   - List multi-select: `press_ctrl=True`
+   - Multiple buttons: `press_ctrl=False`
+
+## Error Handling
+
+Common errors and solutions:
+
+- **"Either locs or labels must be provided"**: Supply one of the two parameters
+- **"Desktop state is empty"**: Call Snapshot before using `labels`
+- **"Failed to find element with label X"**: Label doesn't exist in current snapshot; take a new snapshot
+
+## Workflow Example
+
+```python
+# Complete workflow: Multi-select files and delete them
+
+# 1. Take snapshot to see available files
+snapshot_tool(use_vision=True)
+
+# 2. Select files using labels from snapshot
+multi_select_tool(
+    labels=[15, 18, 22],  # Three files
+    press_ctrl=True
+)
+
+# 3. Press Delete key
+shortcut_tool(shortcut="delete")
+
+# 4. Confirm deletion dialog
+click_tool(label=30)  # Click "Yes" button
+```
+
+## Related Tools
+
+- [Click](/tools/click) - Single-click operations
+- [MultiEdit](/tools/multiedit) - Type text into multiple fields
+- [Snapshot](/tools/snapshot) - Get UI element labels for selection
+- [Shortcut](/tools/shortcut) - Execute keyboard shortcuts on selected items

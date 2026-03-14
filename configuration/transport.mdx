@@ -1,0 +1,307 @@
+---
+title: "Transport Options"
+description: "Configure how Windows-MCP communicates with MCP clients"
+---
+
+Windows-MCP supports three transport layers for communication with MCP clients. The transport determines how the server sends and receives messages.
+
+## Available Transports
+
+### stdio (Default)
+
+**Standard input/output communication** - The default and recommended transport for most desktop MCP clients.
+
+<ParamField path="--transport" type="string" default="stdio">
+  Use standard input/output for communication
+</ParamField>
+
+#### Configuration
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+<Note>
+  When using `stdio` transport, you don't need to specify `--transport stdio` in the args - it's the default.
+</Note>
+
+#### When to Use
+
+<CardGroup cols={2}>
+  <Card title="Claude Desktop" icon="desktop">
+    Standard transport for Claude Desktop integration
+  </Card>
+  <Card title="Perplexity" icon="magnifying-glass">
+    Default for Perplexity Desktop connectors
+  </Card>
+  <Card title="CLI Clients" icon="terminal">
+    Gemini CLI, Qwen Code, and Codex CLI
+  </Card>
+  <Card title="Direct Connection" icon="plug">
+    When the client runs on the same machine
+  </Card>
+</CardGroup>
+
+---
+
+### SSE (Server-Sent Events)
+
+**Network-accessible via Server-Sent Events** - Enables remote clients to connect over HTTP.
+
+<ParamField path="--transport" type="string">
+  Set to `sse` for Server-Sent Events transport
+</ParamField>
+
+<ParamField path="--host" type="string" default="localhost">
+  Host to bind the SSE server
+</ParamField>
+
+<ParamField path="--port" type="integer" default="8000">
+  Port to bind the SSE server
+</ParamField>
+
+#### Configuration
+
+```bash
+# Command line
+uvx windows-mcp --transport sse --host localhost --port 8000
+```
+
+```bash
+# Bind to all interfaces (use with caution)
+uvx windows-mcp --transport sse --host 0.0.0.0 --port 8000
+```
+
+#### When to Use
+
+<CardGroup cols={2}>
+  <Card title="Network Access" icon="network-wired">
+    When clients need to connect over the network
+  </Card>
+  <Card title="Browser Clients" icon="browser">
+    Web-based MCP clients that support SSE
+  </Card>
+  <Card title="Development" icon="flask">
+    Testing network connectivity and debugging
+  </Card>
+  <Card title="Multiple Clients" icon="users">
+    Supporting multiple simultaneous connections
+  </Card>
+</CardGroup>
+
+<Warning>
+  Using `--host 0.0.0.0` exposes the server to your entire network. Only use this in trusted networks or with proper firewall rules.
+</Warning>
+
+---
+
+### Streamable HTTP
+
+**Network-accessible via HTTP streaming** - Recommended for production network deployments.
+
+<ParamField path="--transport" type="string">
+  Set to `streamable-http` for HTTP streaming transport
+</ParamField>
+
+<ParamField path="--host" type="string" default="localhost">
+  Host to bind the HTTP server
+</ParamField>
+
+<ParamField path="--port" type="integer" default="8000">
+  Port to bind the HTTP server
+</ParamField>
+
+#### Configuration
+
+```bash
+# Command line
+uvx windows-mcp --transport streamable-http --host localhost --port 8000
+```
+
+```bash
+# Custom port
+uvx windows-mcp --transport streamable-http --host 127.0.0.1 --port 5000
+```
+
+#### When to Use
+
+<CardGroup cols={2}>
+  <Card title="Production" icon="server">
+    Recommended for production network deployments
+  </Card>
+  <Card title="Remote Mode" icon="cloud">
+    Used internally when MODE=remote for proxy connections
+  </Card>
+  <Card title="Load Balancing" icon="scale-balanced">
+    When deploying behind a load balancer
+  </Card>
+  <Card title="API Integration" icon="code-branch">
+    Integrating with HTTP-based systems
+  </Card>
+</CardGroup>
+
+---
+
+## Transport Comparison
+
+| Feature | stdio | sse | streamable-http |
+|---------|-------|-----|----------------|
+| **Network Access** | No | Yes | Yes |
+| **Multiple Clients** | No | Yes | Yes |
+| **Setup Complexity** | Simple | Medium | Medium |
+| **Performance** | Fastest | Fast | Fast |
+| **Use Case** | Desktop clients | Development | Production |
+| **Default Port** | N/A | 8000 | 8000 |
+
+---
+
+## Network Security
+
+When using network transports (SSE or streamable-http), follow these security best practices:
+
+<Steps>
+  <Step title="Use localhost binding">
+    Bind to `127.0.0.1` or `localhost` instead of `0.0.0.0` when possible
+    
+    ```bash
+    # Secure: localhost only
+    --host localhost
+    
+    # Less secure: all interfaces
+    --host 0.0.0.0
+    ```
+  </Step>
+  
+  <Step title="Implement firewall rules">
+    Restrict access to the MCP server ports using Windows Firewall
+    
+    ```powershell
+    New-NetFirewallRule -DisplayName "Windows-MCP" `
+      -Direction Inbound -LocalPort 8000 -Protocol TCP `
+      -Action Allow -RemoteAddress 192.168.1.0/24
+    ```
+  </Step>
+  
+  <Step title="Use trusted networks">
+    Only expose the server on trusted networks (VPN, private LAN)
+  </Step>
+  
+  <Step title="Monitor connections">
+    Regularly review logs for unexpected connection attempts
+  </Step>
+</Steps>
+
+<Warning>
+  **Never expose the MCP server directly to the internet** without proper authentication and encryption. Windows-MCP currently does not implement built-in authentication for network transports.
+</Warning>
+
+---
+
+## Examples
+
+### Local Desktop Client (stdio)
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"]
+    }
+  }
+}
+```
+
+### Development Server (SSE)
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp",
+        "--transport",
+        "sse",
+        "--host",
+        "localhost",
+        "--port",
+        "8000"
+      ]
+    }
+  }
+}
+```
+
+### Production Server (streamable-http)
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp",
+        "--transport",
+        "streamable-http",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "5000"
+      ]
+    }
+  }
+}
+```
+
+### Remote Mode (automatic streamable-http)
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "your-sandbox-id",
+        "API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+<Note>
+  In remote mode, Windows-MCP automatically uses `streamable-http` transport internally to connect to the windowsmcp.io dashboard.
+</Note>
+
+---
+
+## Troubleshooting
+
+### stdio Issues
+
+- **Server not starting**: Check the MCP client logs for error messages
+- **Tools not appearing**: Verify the command path is correct (`uvx` or `uv` with full path)
+- **Timeout on first run**: Installing dependencies can take 1-2 minutes - restart the client
+
+### Network Transport Issues
+
+- **Port already in use**: Change the `--port` to an available port (e.g., 8001, 8080)
+- **Connection refused**: Verify the host and port are correct and firewall allows the connection
+- **Cannot bind to 0.0.0.0**: Run with administrator privileges or use localhost
+- **Timeout**: Check network connectivity and firewall rules
+
+<Tip>
+  Use `netstat -an | findstr :8000` in PowerShell to check if port 8000 is already in use.
+</Tip>

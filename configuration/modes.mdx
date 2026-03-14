@@ -1,0 +1,180 @@
+---
+title: "Operating Modes"
+description: "Configure Windows-MCP to run in local or remote mode"
+---
+
+Windows-MCP supports two operating modes: **Local** (default) and **Remote**. The mode determines how the MCP server connects and where it executes commands.
+
+## Local Mode (Default)
+
+In local mode, Windows-MCP runs directly on your Windows machine and exposes its tools to the connected MCP client. This is the standard setup for personal use.
+
+### Configuration
+
+No additional environment variables are needed for local mode. The MCP client connects directly to the server.
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Transport Options
+
+Local mode supports all transport layers:
+
+- **stdio** (default): Direct connection from MCP clients like Claude Desktop, Cursor, etc.
+- **sse**: Network-accessible via Server-Sent Events
+- **streamable-http**: Network-accessible via HTTP streaming (recommended for production)
+
+See [Transport Options](/configuration/transport) for detailed transport configuration.
+
+### When to Use Local Mode
+
+<CardGroup cols={2}>
+  <Card title="Personal Use" icon="user">
+    Running Windows-MCP on your own Windows machine for personal automation
+  </Card>
+  <Card title="Direct Access" icon="desktop">
+    When the MCP client and Windows machine are the same or on the same network
+  </Card>
+  <Card title="Development" icon="code">
+    Testing and developing automation workflows locally
+  </Card>
+  <Card title="Privacy" icon="shield">
+    Keeping all automation data on your local machine
+  </Card>
+</CardGroup>
+
+---
+
+## Remote Mode
+
+In remote mode, Windows-MCP acts as a **proxy** that connects to [windowsmcp.io](https://windowsmcp.io), enabling cloud-hosted Windows automation. This is designed for scenarios where the MCP client is remote and connects through the dashboard, which routes requests to a Windows VM running Windows-MCP.
+
+### Required Environment Variables
+
+<ParamField path="MODE" type="string" required>
+  Set to `remote` to enable remote mode
+  
+  ```json
+  "env": {
+    "MODE": "remote"
+  }
+  ```
+</ParamField>
+
+<ParamField path="SANDBOX_ID" type="string" required>
+  The sandbox/VM identifier from the windowsmcp.io dashboard
+  
+  ```json
+  "env": {
+    "SANDBOX_ID": "your-sandbox-id"
+  }
+  ```
+</ParamField>
+
+<ParamField path="API_KEY" type="string" required>
+  Your Windows-MCP API key from the dashboard
+  
+  ```json
+  "env": {
+    "API_KEY": "your-api-key"
+  }
+  ```
+</ParamField>
+
+### Configuration Example
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "your-sandbox-id",
+        "API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### How Remote Mode Works
+
+1. The MCP server authenticates with the windowsmcp.io dashboard using `API_KEY` and `SANDBOX_ID`
+2. Dashboard validates the key, checks credits, and resolves the sandbox
+3. Returns a session token for subsequent MCP calls
+4. ProxyClient uses `Bearer <session_token>` to connect to the VM
+5. Requests are routed through the dashboard to the Windows VM
+
+### When to Use Remote Mode
+
+<CardGroup cols={2}>
+  <Card title="Cloud Automation" icon="cloud">
+    Running automation on cloud-hosted Windows VMs
+  </Card>
+  <Card title="Remote Access" icon="globe">
+    Accessing Windows automation from anywhere
+  </Card>
+  <Card title="Scalability" icon="chart-line">
+    Running multiple Windows instances in parallel
+  </Card>
+  <Card title="Isolation" icon="lock">
+    Keeping automation separate from your personal machine
+  </Card>
+</CardGroup>
+
+---
+
+## Mode Detection
+
+The mode is determined by the `MODE` environment variable:
+
+- If `MODE` is not set or set to `local`, Windows-MCP runs in **local mode**
+- If `MODE` is set to `remote`, Windows-MCP runs in **remote mode** (requires `SANDBOX_ID` and `API_KEY`)
+
+```python
+# From source code
+config = Config(
+    mode=os.getenv("MODE", "local").lower(),
+    sandbox_id=os.getenv("SANDBOX_ID", ''),
+    api_key=os.getenv("API_KEY", '')
+)
+```
+
+<Note>
+  Remote mode requires valid credentials from [windowsmcp.io](https://windowsmcp.io). Without `SANDBOX_ID` and `API_KEY`, the server will fail to start.
+</Note>
+
+---
+
+## Troubleshooting
+
+### Local Mode Issues
+
+- **Connection refused**: Check that the MCP client is configured correctly
+- **Tools not appearing**: Restart the MCP client after configuration changes
+- **Permission errors**: Ensure Windows-MCP has appropriate user permissions
+
+### Remote Mode Issues
+
+- **Authentication failed**: Verify your `API_KEY` and `SANDBOX_ID` are correct
+- **Cannot reach dashboard**: Check network connectivity to windowsmcp.io
+- **Session expired**: The server will automatically re-authenticate
+- **Missing environment variables**: Ensure all required variables are set in the MCP client configuration
+
+<Warning>
+  Never commit your `API_KEY` to version control or share it publicly. Treat it like a password.
+</Warning>

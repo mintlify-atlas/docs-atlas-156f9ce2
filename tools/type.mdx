@@ -1,0 +1,258 @@
+---
+title: 'Type'
+description: 'Enter text into input fields at coordinates or by element label'
+icon: 'keyboard'
+---
+
+## Overview
+
+The **Type** tool enters text into input fields at specified coordinates or on labeled UI elements. It supports clearing existing text, positioning the caret, and submitting with Enter.
+
+<Tip>
+Call Snapshot first to identify text input fields, then use Type to enter text.
+</Tip>
+
+## Function Signature
+
+```python
+def type_tool(
+    text: str,
+    loc: list[int] | None = None,
+    label: int | None = None,
+    clear: bool | str = False,
+    caret_position: Literal["start", "idle", "end"] = "idle",
+    press_enter: bool | str = False,
+    ctx: Context = None,
+) -> str
+```
+
+## Parameters
+
+<ParamField path="text" type="string" required>
+  The text to type. Special characters and Unicode are supported.
+</ParamField>
+
+<ParamField path="loc" type="list[int]" default={null}>
+  Target coordinates as `[x, y]` in virtual desktop coordinate space. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="label" type="int" default={null}>
+  UI element label/ID from Snapshot output. Automatically resolves to coordinates. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="clear" type="bool | str" default={false}>
+  Clear existing text before typing:
+  - `true`: Select all and delete existing content
+  - `false`: Append to existing text
+</ParamField>
+
+<ParamField path="caret_position" type="string" default="idle">
+  Position the caret before typing:
+  - `"idle"`: Don't move caret (type at current position)
+  - `"start"`: Move caret to beginning of field
+  - `"end"`: Move caret to end of field
+</ParamField>
+
+<ParamField path="press_enter" type="bool | str" default={false}>
+  Press Enter after typing to submit the input:
+  - `true`: Send Enter keystroke after text
+  - `false`: Leave cursor in field
+</ParamField>
+
+## Coordinate System
+
+Type uses the same **virtual desktop coordinate space** as Click and Snapshot:
+
+- Coordinates from Snapshot work directly with Type
+- Multi-monitor setups span entire virtual desktop
+- Click the field first if you need to ensure focus
+
+<CardGroup cols={2}>
+  <Card title="Using Coordinates" icon="map-pin">
+    Pass exact `[x, y]` coordinates to click and type in one step.
+  </Card>
+  <Card title="Using Labels" icon="tag">
+    Reference text fields by their numeric label from Snapshot.
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Type in Field by Coordinates
+
+```json
+{
+  "text": "hello@example.com",
+  "loc": [400, 300],
+  "clear": false,
+  "press_enter": false
+}
+```
+
+Clicks at `(400, 300)` and types the email address.
+
+### Type by Element Label
+
+```json
+{
+  "text": "My search query",
+  "label": 15,
+  "clear": false,
+  "press_enter": true
+}
+```
+
+Types in the field with label `15` and presses Enter to submit.
+
+### Replace Existing Text
+
+```json
+{
+  "text": "New content",
+  "loc": [500, 250],
+  "clear": true,
+  "caret_position": "idle"
+}
+```
+
+Clears the existing text at `(500, 250)` and types new content.
+
+### Type at Beginning of Field
+
+```json
+{
+  "text": "Prefix: ",
+  "label": 20,
+  "clear": false,
+  "caret_position": "start"
+}
+```
+
+Moves caret to the start of field with label `20` and types a prefix.
+
+### Type at End of Field
+
+```json
+{
+  "text": " - additional info",
+  "loc": [600, 400],
+  "clear": false,
+  "caret_position": "end"
+}
+```
+
+Moves caret to the end and appends text.
+
+### Submit Form After Typing
+
+```json
+{
+  "text": "username123",
+  "label": 8,
+  "clear": true,
+  "press_enter": true
+}
+```
+
+Clears field, types username, and presses Enter to submit.
+
+## Common Patterns
+
+### Fill Multi-Field Form
+
+1. Call **Snapshot** to get field labels
+2. Call **Type** for each field using labels
+3. Call **Click** on submit button or use `press_enter: true` on last field
+
+### Replace Text in Search Box
+
+1. Call **Type** with `clear: true` to remove old query
+2. Set `press_enter: true` to trigger search immediately
+
+### Append to Existing Content
+
+1. Call **Type** with `caret_position: "end"` and `clear: false`
+2. Text will be added after existing content
+
+### Type Special Characters
+
+The Type tool supports Unicode and special characters:
+
+```json
+{
+  "text": "Price: $49.99 €42.00",
+  "loc": [300, 200]
+}
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Text doesn't appear">
+    Possible causes:
+    - Field doesn't have focus (try clicking the field first with Click tool)
+    - Application requires elevated privileges
+    - Field is read-only or disabled
+    - Wrong coordinates (verify with Snapshot)
+  </Accordion>
+
+  <Accordion title="'Either loc or label must be provided' error">
+    You must specify exactly one of `loc` or `label`. Don't provide both or neither.
+  </Accordion>
+
+  <Accordion title="'Failed to find element with label X' error">
+    The label doesn't exist in the current desktop state:
+    - Call Snapshot again to refresh element labels
+    - UI may have changed since last Snapshot
+    - Element may not be visible
+  </Accordion>
+
+  <Accordion title="'Desktop state is empty' error">
+    You tried to use `label` without calling Snapshot first. Always call Snapshot before using element labels.
+  </Accordion>
+
+  <Accordion title="clear parameter doesn't work">
+    Some applications don't respond to Ctrl+A. Try:
+    - Using Shortcut tool to send Ctrl+A separately
+    - Clicking in the field first to ensure focus
+    - Using caret_position to position cursor, then manually selecting text
+  </Accordion>
+
+  <Accordion title="Text types in wrong field">
+    Multi-field forms may have focus issues:
+    - Call Click on the specific field before Type
+    - Use element labels instead of coordinates for precision
+    - Verify field focus with Snapshot before typing
+  </Accordion>
+
+  <Accordion title="press_enter doesn't submit form">
+    Some forms require clicking a submit button instead:
+    - Use Snapshot to find the submit button
+    - Use Click to activate the button
+    - Don't use `press_enter: true`
+  </Accordion>
+
+  <Accordion title="Special characters don't work">
+    Some applications have custom key handling:
+    - Try using Clipboard tool to paste complex text
+    - Verify the application supports Unicode input
+    - Use simpler ASCII characters if possible
+  </Accordion>
+</AccordionGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera" href="/tools/snapshot">
+    Identify text fields and get their labels/coordinates
+  </Card>
+  <Card title="Click" icon="mouse-pointer" href="/tools/click">
+    Click into a field before typing to ensure focus
+  </Card>
+  <Card title="Shortcut" icon="command" href="/tools/shortcut">
+    Send keyboard shortcuts like Ctrl+A to select all
+  </Card>
+  <Card title="Clipboard" icon="clipboard" href="/tools/clipboard">
+    Alternative for pasting large or complex text
+  </Card>
+</CardGroup>

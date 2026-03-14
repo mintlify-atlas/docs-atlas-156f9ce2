@@ -1,0 +1,366 @@
+---
+title: Code Style Guidelines
+description: Code style and formatting standards for Windows-MCP
+---
+
+Windows-MCP follows consistent code style guidelines to ensure readability and maintainability. We use [Ruff](https://github.com/astral-sh/ruff) for automated formatting and linting.
+
+## Formatting and Linting
+
+We use **Ruff** as our formatter and linter. It's fast, Python 3.13 compatible, and replaces multiple tools (Black, Flake8, isort).
+
+### Configuration
+
+Ruff is configured in `pyproject.toml`:
+
+```toml
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/windows_mcp/uia/*.py" = ["F403", "F405"]
+```
+
+### Running Ruff
+
+<Steps>
+  <Step title="Format Code">
+    Format all Python files to match the project's style:
+    
+    ```bash
+    ruff format .
+    ```
+  </Step>
+  
+  <Step title="Lint Code">
+    Check for linting issues:
+    
+    ```bash
+    ruff check .
+    ```
+  </Step>
+  
+  <Step title="Auto-fix Issues">
+    Automatically fix linting issues where possible:
+    
+    ```bash
+    ruff check --fix .
+    ```
+  </Step>
+</Steps>
+
+<Tip>
+  Always run `ruff format .` and `ruff check .` before committing your changes.
+</Tip>
+
+## Style Guidelines
+
+### Line Length
+
+**Maximum line length: 100 characters**
+
+Break long lines to improve readability:
+
+```python
+# Good
+def click_tool(
+    loc: list[int],
+    button: Literal['left', 'right', 'middle'] = 'left',
+    clicks: int = 1
+) -> str:
+    pass
+
+# Avoid
+def click_tool(loc: list[int], button: Literal['left', 'right', 'middle'] = 'left', clicks: int = 1) -> str:
+    pass
+```
+
+### Quotes
+
+**Use double quotes for strings:**
+
+```python
+# Good
+message = "Click performed successfully"
+path = "C:\\Users\\Documents"
+
+# Avoid
+message = 'Click performed successfully'
+path = 'C:\\Users\\Documents'
+```
+
+### Naming Conventions
+
+Follow PEP 8 naming conventions:
+
+<CardGroup cols={2}>
+  <Card title="Functions and Variables" icon="function">
+    Use `snake_case`
+    
+    ```python
+    def get_window_state():
+        window_title = "My App"
+    ```
+  </Card>
+  
+  <Card title="Classes" icon="cube">
+    Use `PascalCase`
+    
+    ```python
+    class Desktop:
+        pass
+    
+    class TreeElementNode:
+        pass
+    ```
+  </Card>
+  
+  <Card title="Constants" icon="lock">
+    Use `UPPER_CASE`
+    
+    ```python
+    MAX_RETRIES = 3
+    DEFAULT_TIMEOUT = 5000
+    ```
+  </Card>
+  
+  <Card title="Private Members" icon="eye-slash">
+    Prefix with underscore
+    
+    ```python
+    def _internal_helper():
+        pass
+    
+    _cache = {}
+    ```
+  </Card>
+</CardGroup>
+
+### Type Hints
+
+**Always add type annotations to function signatures:**
+
+```python
+# Good
+def click_tool(
+    loc: list[int],
+    button: Literal['left', 'right', 'middle'] = 'left',
+    clicks: int = 1
+) -> str:
+    """Click on UI elements at specific coordinates."""
+    if len(loc) != 2:
+        raise ValueError("Location must be a list of exactly 2 integers [x, y]")
+    return "Click performed"
+
+# Avoid (no type hints)
+def click_tool(loc, button='left', clicks=1):
+    if len(loc) != 2:
+        raise ValueError("Location must be a list of exactly 2 integers [x, y]")
+    return "Click performed"
+```
+
+### Docstrings
+
+**Use Google-style docstrings for all public functions and classes:**
+
+```python
+def click_tool(
+    loc: list[int],
+    button: Literal['left', 'right', 'middle'] = 'left',
+    clicks: int = 1
+) -> str:
+    """Click on UI elements at specific coordinates.
+    
+    Args:
+        loc: List of [x, y] coordinates to click
+        button: Mouse button to use (left, right, or middle)
+        clicks: Number of clicks (1=single, 2=double, 3=triple)
+    
+    Returns:
+        Confirmation message describing the action performed
+    
+    Raises:
+        ValueError: If loc doesn't contain exactly 2 integers
+    """
+    if len(loc) != 2:
+        raise ValueError("Location must be a list of exactly 2 integers [x, y]")
+    # Implementation...
+    return f"Clicked at ({loc[0]}, {loc[1]}) with {button} button"
+```
+
+**Docstring structure:**
+
+1. **Summary line**: Brief one-line description
+2. **Args**: Document all parameters (name and description)
+3. **Returns**: Describe the return value
+4. **Raises**: List exceptions that can be raised
+
+### Class Docstrings
+
+```python
+class Desktop:
+    """High-level orchestrator for Windows desktop automation.
+    
+    Manages window operations (launch, resize, switch), screenshots,
+    mouse/keyboard actions, and clipboard operations. Interfaces with
+    the Tree service for UI element discovery.
+    
+    Attributes:
+        encoding: System's preferred encoding for text operations
+        tree: Tree service instance for UI element discovery
+        desktop_state: Cached desktop state from last snapshot
+    """
+    
+    def __init__(self):
+        self.encoding = getpreferredencoding()
+        self.tree = Tree(self)
+        self.desktop_state = None
+```
+
+## Code Examples from Source
+
+Here are real examples from the Windows-MCP codebase:
+
+### Service Class Pattern
+
+From `src/windows_mcp/desktop/service.py:69`:
+
+```python
+class Desktop:
+    def __init__(self):
+        self.encoding = getpreferredencoding()
+        self.tree = Tree(self)
+        self.desktop_state = None
+
+    def get_state(
+        self,
+        use_annotation: bool | str = True,
+        use_vision: bool | str = False,
+        use_dom: bool | str = False,
+        use_ui_tree: bool | str = True,
+        as_bytes: bool | str = False,
+        scale: float = 1.0,
+        grid_lines: tuple[int, int] | None = None,
+        display_indices: list[int] | None = None,
+        max_image_size: Size | None = None,
+    ) -> DesktopState:
+        # Implementation...
+```
+
+### Helper Function Pattern
+
+From `src/windows_mcp/desktop/service.py:50`:
+
+```python
+def _escape_text_for_sendkeys(text: str) -> str:
+    """Escape special characters so uia.SendKeys types them correctly."""
+    result = []
+    for ch in text:
+        if ch == "{":
+            result.append("{{}")  
+        elif ch == "}":
+            result.append("{}}")  
+        elif ch == "\n":
+            result.append("{Enter}")
+        elif ch == "\t":
+            result.append("{Tab}")
+        elif ch == "\r":
+            continue
+        else:
+            result.append(ch)
+    return "".join(result)
+```
+
+## Comments
+
+### When to Comment
+
+**Do comment:**
+
+- Complex algorithms or logic
+- Non-obvious decisions or workarounds
+- Important edge cases or limitations
+- TODO items or known issues
+
+```python
+# Screenshots are capped to 1920x1080 for token efficiency
+max_width = 1920
+max_height = 1080
+
+# Browser detection triggers special DOM extraction mode
+if window.browser in [Browser.CHROME, Browser.EDGE, Browser.FIREFOX]:
+    use_dom = True
+```
+
+**Don't comment:**
+
+- Obvious code that's self-explanatory
+- Redundant explanations of what the code does
+
+```python
+# Bad: Comment is obvious
+# Increment counter by 1
+counter += 1
+
+# Good: Self-explanatory code needs no comment
+counter += 1
+```
+
+## Imports
+
+**Group imports in the following order:**
+
+1. Standard library imports
+2. Related third-party imports
+3. Local application/library imports
+
+```python
+# Standard library
+from typing import Literal
+from time import sleep
+import logging
+
+# Third-party
+from PIL import Image
+from fuzzywuzzy import process
+import win32gui
+
+# Local
+from windows_mcp.desktop.views import DesktopState, Window
+from windows_mcp.tree.service import Tree
+import windows_mcp.uia as uia
+```
+
+## Error Handling
+
+**Raise appropriate exceptions with clear messages:**
+
+```python
+# Good
+if len(loc) != 2:
+    raise ValueError("Location must be a list of exactly 2 integers [x, y]")
+
+if not isinstance(clicks, int) or clicks < 1:
+    raise ValueError("Clicks must be a positive integer")
+
+# Avoid generic exceptions
+if len(loc) != 2:
+    raise Exception("Invalid location")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Learn about our testing procedures and best practices
+  </Card>
+  
+  <Card title="Development Setup" icon="wrench" href="/development/setup">
+    Review the development setup guide
+  </Card>
+</CardGroup>

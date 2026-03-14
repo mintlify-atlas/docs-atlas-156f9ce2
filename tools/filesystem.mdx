@@ -1,0 +1,597 @@
+---
+title: 'FileSystem'
+description: 'Structured file and directory operations on Windows'
+icon: 'folder-open'
+---
+
+## Overview
+
+The **FileSystem** tool provides safe, structured file operations as an alternative to raw PowerShell commands. It supports eight modes for comprehensive file management with automatic path resolution and error handling.
+
+<CardGroup cols={4}>
+  <Card title="Read" icon="file-lines" href="#read-mode">
+    Read file contents
+  </Card>
+  <Card title="Write" icon="file-pen" href="#write-mode">
+    Create or modify files
+  </Card>
+  <Card title="Copy" icon="copy" href="#copy-mode">
+    Duplicate files/directories
+  </Card>
+  <Card title="Move" icon="arrows-up-down-left-right" href="#move-mode">
+    Move or rename paths
+  </Card>
+  <Card title="Delete" icon="trash" href="#delete-mode">
+    Remove files/directories
+  </Card>
+  <Card title="List" icon="list" href="#list-mode">
+    Browse directory contents
+  </Card>
+  <Card title="Search" icon="magnifying-glass" href="#search-mode">
+    Find files by pattern
+  </Card>
+  <Card title="Info" icon="circle-info" href="#info-mode">
+    Get file metadata
+  </Card>
+</CardGroup>
+
+## Function Signature
+
+```python
+def file_system_tool(
+    mode: Literal['read', 'write', 'copy', 'move', 'delete', 'list', 'search', 'info'],
+    path: str,
+    destination: str | None = None,
+    content: str | None = None,
+    pattern: str | None = None,
+    recursive: bool | str = False,
+    append: bool | str = False,
+    overwrite: bool | str = False,
+    offset: int | None = None,
+    limit: int | None = None,
+    encoding: str = 'utf-8',
+    show_hidden: bool | str = False
+) -> str
+```
+
+## Common Parameters
+
+<ParamField path="mode" type="Literal" required>
+  Operation mode: `read`, `write`, `copy`, `move`, `delete`, `list`, `search`, or `info`
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  File or directory path. **Relative paths** are resolved from the **Desktop folder**.
+  - Relative: `Documents\file.txt` → `C:\Users\<User>\Desktop\Documents\file.txt`
+  - Absolute: `C:\Projects\app.py` → Used as-is
+  - Special folders: `%USERPROFILE%`, `%APPDATA%`, etc. are expanded
+</ParamField>
+
+<ParamField path="encoding" type="string" default="utf-8">
+  Character encoding for text operations. Common values:
+  - `utf-8`: Unicode (recommended)
+  - `utf-16`: Windows Unicode
+  - `ascii`: 7-bit ASCII
+  - `latin-1`: Western European
+  - `cp1252`: Windows Western European
+</ParamField>
+
+## Read Mode
+
+Reads text file contents with optional line-based pagination.
+
+### Parameters
+
+<ParamField path="offset" type="integer">
+  Starting line number (1-based). If provided with `limit`, returns a slice of lines.
+</ParamField>
+
+<ParamField path="limit" type="integer">
+  Number of lines to read from `offset`. Useful for large files.
+</ParamField>
+
+### Examples
+
+```python
+# Read entire file
+file_system_tool(mode="read", path="notes.txt")
+# Returns:
+# File: C:\Users\John\Desktop\notes.txt
+# Line 1 content
+# Line 2 content
+
+# Read lines 10-20
+file_system_tool(mode="read", path="log.txt", offset=10, limit=10)
+# Returns:
+# File: C:\Users\John\Desktop\log.txt
+# Lines 10-20 of 1000:
+# [log entries]
+
+# Read with custom encoding
+file_system_tool(mode="read", path="legacy.txt", encoding="latin-1")
+```
+
+### Limits
+
+- **Max file size**: 10 MB (10,485,760 bytes)
+- Files exceeding this limit return an error:
+  ```
+  Error: File too large (15,728,640 bytes). Maximum is 10,485,760 bytes.
+  Use offset/limit parameters or the Shell tool for large files.
+  ```
+
+### Error Cases
+
+```python
+# File not found
+file_system_tool(mode="read", path="nonexistent.txt")
+# Returns: "Error: File not found: C:\Users\John\Desktop\nonexistent.txt"
+
+# Binary file
+file_system_tool(mode="read", path="image.png")
+# Returns: "Error: Unable to read file as text with encoding 'utf-8'. File may be binary."
+
+# Permission denied
+file_system_tool(mode="read", path="C:\Windows\System32\config\SAM")
+# Returns: "Error: Permission denied: C:\Windows\System32\config\SAM"
+```
+
+## Write Mode
+
+Creates or overwrites a text file with content.
+
+### Parameters
+
+<ParamField path="content" type="string" required>
+  Text content to write to the file.
+</ParamField>
+
+<ParamField path="append" type="boolean" default="false">
+  - `false`: Overwrite existing file (default)
+  - `true`: Append to existing file
+</ParamField>
+
+### Examples
+
+```python
+# Create new file
+file_system_tool(
+    mode="write",
+    path="report.txt",
+    content="Summary: All tests passed\nDate: 2024-01-15"
+)
+# Returns: "Written to C:\Users\John\Desktop\report.txt (45 bytes)"
+
+# Append to existing file
+file_system_tool(
+    mode="write",
+    path="log.txt",
+    content="\n[2024-01-15 14:30] New entry",
+    append=True
+)
+# Returns: "Appended to C:\Users\John\Desktop\log.txt (120 bytes)"
+
+# Create in subdirectory (auto-creates parents)
+file_system_tool(
+    mode="write",
+    path="Projects\MyApp\config.json",
+    content='{"theme": "dark"}'
+)
+# Creates: Desktop\Projects\MyApp\config.json
+```
+
+### Behavior
+
+- **Auto-creates parent directories** if they don't exist
+- **Overwrites** existing files by default (use `append=True` to preserve)
+- Encodes content using specified `encoding` parameter
+
+## Copy Mode
+
+Copies files or directories to a new location.
+
+### Parameters
+
+<ParamField path="destination" type="string" required>
+  Target path. Relative paths are resolved from Desktop.
+</ParamField>
+
+<ParamField path="overwrite" type="boolean" default="false">
+  - `false`: Error if destination exists (default)
+  - `true`: Replace existing destination
+</ParamField>
+
+### Examples
+
+```python
+# Copy file
+file_system_tool(
+    mode="copy",
+    path="document.docx",
+    destination="Backup\document_backup.docx"
+)
+# Returns: "Copied file: C:\Users\John\Desktop\document.docx -> C:\Users\John\Desktop\Backup\document_backup.docx"
+
+# Copy directory (recursive by default)
+file_system_tool(
+    mode="copy",
+    path="C:\Projects\MyApp",
+    destination="D:\Backups\MyApp_20240115"
+)
+# Returns: "Copied directory: C:\Projects\MyApp -> D:\Backups\MyApp_20240115"
+
+# Overwrite existing
+file_system_tool(
+    mode="copy",
+    path="new_version.exe",
+    destination="C:\Program Files\MyApp\app.exe",
+    overwrite=True
+)
+```
+
+### Error Cases
+
+```python
+# Destination exists
+file_system_tool(mode="copy", path="file.txt", destination="existing.txt")
+# Returns: "Error: Destination already exists: C:\Users\John\Desktop\existing.txt. Set overwrite=True to replace."
+```
+
+<Warning>
+Copying large directories may take significant time. Use the `Shell` tool with `Copy-Item -Verbose` for progress feedback.
+</Warning>
+
+## Move Mode
+
+Moves or renames files and directories.
+
+### Parameters
+
+<ParamField path="destination" type="string" required>
+  Target path. Relative paths are resolved from Desktop.
+</ParamField>
+
+<ParamField path="overwrite" type="boolean" default="false">
+  - `false`: Error if destination exists (default)
+  - `true`: Replace existing destination
+</ParamField>
+
+### Examples
+
+```python
+# Rename file
+file_system_tool(
+    mode="move",
+    path="old_name.txt",
+    destination="new_name.txt"
+)
+# Returns: "Moved: C:\Users\John\Desktop\old_name.txt -> C:\Users\John\Desktop\new_name.txt"
+
+# Move to different directory
+file_system_tool(
+    mode="move",
+    path="downloads\report.pdf",
+    destination="C:\Documents\Reports\Q1_2024.pdf"
+)
+
+# Move directory
+file_system_tool(
+    mode="move",
+    path="TempProject",
+    destination="C:\Archive\OldProjects\TempProject"
+)
+```
+
+### Behavior
+
+- **Atomic operation** within the same drive
+- **Copy + Delete** when moving across drives
+- Auto-creates parent directories at destination
+
+## Delete Mode
+
+Removes files or directories.
+
+### Parameters
+
+<ParamField path="recursive" type="boolean" default="false">
+  - `false`: Only delete empty directories (default)
+  - `true`: Delete directories with contents
+</ParamField>
+
+### Examples
+
+```python
+# Delete file
+file_system_tool(mode="delete", path="temporary.txt")
+# Returns: "Deleted file: C:\Users\John\Desktop\temporary.txt"
+
+# Delete empty directory
+file_system_tool(mode="delete", path="EmptyFolder")
+# Returns: "Deleted directory: C:\Users\John\Desktop\EmptyFolder"
+
+# Delete directory with contents
+file_system_tool(mode="delete", path="OldProject", recursive=True)
+# Returns: "Deleted directory: C:\Users\John\Desktop\OldProject"
+```
+
+### Error Cases
+
+```python
+# Non-empty directory without recursive
+file_system_tool(mode="delete", path="MyFolder")
+# Returns: "Error: Directory is not empty: C:\Users\John\Desktop\MyFolder. Set recursive=True to delete non-empty directories."
+
+# Path not found
+file_system_tool(mode="delete", path="nonexistent.txt")
+# Returns: "Error: Path not found: C:\Users\John\Desktop\nonexistent.txt"
+```
+
+<Warning>
+**Destructive operation**: Deleted files are **not sent to Recycle Bin** and cannot be easily recovered. Use with caution.
+</Warning>
+
+## List Mode
+
+Lists directory contents with optional filtering.
+
+### Parameters
+
+<ParamField path="pattern" type="string">
+  Filename pattern (supports wildcards: `*`, `?`, `[abc]`)
+  - `*.txt`: All text files
+  - `report_*.pdf`: Reports with any suffix
+  - `[abc]*.log`: Logs starting with a, b, or c
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default="false">
+  - `false`: List only direct children (default)
+  - `true`: List all descendants
+</ParamField>
+
+<ParamField path="show_hidden" type="boolean" default="false">
+  - `false`: Skip hidden files (starting with `.`)
+  - `true`: Include hidden files
+</ParamField>
+
+### Examples
+
+```python
+# List directory
+file_system_tool(mode="list", path="C:\Projects")
+# Returns:
+# Directory: C:\Projects
+#   [DIR ] MyApp
+#   [DIR ] Website
+#   [FILE] README.md  1.2 KB
+#   [FILE] notes.txt  456 B
+
+# Filter by extension
+file_system_tool(mode="list", path="Documents", pattern="*.pdf")
+# Returns:
+# Directory: C:\Users\John\Desktop\Documents (filter: *.pdf)
+#   [FILE] invoice.pdf  234.5 KB
+#   [FILE] receipt.pdf  102.1 KB
+
+# Recursive listing
+file_system_tool(mode="list", path="C:\Code", recursive=True)
+# Returns:
+# Directory: C:\Code
+#   [DIR ] project1
+#   [FILE] project1\main.py  2.3 KB
+#   [FILE] project1\utils.py  1.1 KB
+#   [DIR ] project2
+#   [FILE] project2\app.js  5.7 KB
+
+# Show hidden files
+file_system_tool(mode="list", path=".", show_hidden=True)
+# Includes: .gitignore, .env, etc.
+```
+
+### Limits
+
+- **Max results**: 500 items
+- If exceeded, output is truncated:
+  ```
+  ... (truncated, 500+ items)
+  ```
+
+### Sorting
+
+- **Directories first**, then files
+- **Alphabetical** within each group (case-insensitive)
+
+## Search Mode
+
+Finds files matching a glob pattern.
+
+### Parameters
+
+<ParamField path="pattern" type="string" required>
+  Glob pattern to match. Supports:
+  - `**/*.py`: All Python files recursively
+  - `src/**/*.js`: JavaScript files under `src/`
+  - `**/test_*.py`: Test files anywhere
+  - `*.{jpg,png}`: Images with multiple extensions
+</ParamField>
+
+<ParamField path="recursive" type="boolean" default="true">
+  - `true`: Search all subdirectories (default)
+  - `false`: Search only in specified directory
+</ParamField>
+
+### Examples
+
+```python
+# Find all Python files
+file_system_tool(mode="search", path="C:\Projects", pattern="**/*.py")
+# Returns:
+# Search: "**/*.py" in C:\Projects (15 matches)
+#   [FILE] app\main.py  3.2 KB
+#   [FILE] app\models.py  5.1 KB
+#   [FILE] tests\test_app.py  2.8 KB
+#   ...
+
+# Find log files in current directory only
+file_system_tool(mode="search", path="C:\Logs", pattern="*.log", recursive=False)
+# Returns:
+# Search: "*.log" in C:\Logs (3 matches)
+#   [FILE] application.log  1.2 MB
+#   [FILE] error.log  45.3 KB
+
+# Find config files
+file_system_tool(mode="search", path="C:\Program Files", pattern="**/config.json")
+```
+
+### Limits
+
+- **Max results**: 500 matches
+- If exceeded:
+  ```
+  ... (truncated, 500+ matches)
+  ```
+
+## Info Mode
+
+Retrieves detailed metadata about a file or directory.
+
+### Examples
+
+```python
+# Get file info
+file_system_tool(mode="info", path="report.docx")
+# Returns:
+# Path: C:\Users\John\Desktop\report.docx
+# Type: File
+# Size: 45.2 KB (46,234 bytes)
+# Created: 2024-01-10 09:15:30
+# Modified: 2024-01-15 14:22:45
+# Accessed: 2024-01-15 16:30:12
+# Read-only: False
+# Extension: .docx
+
+# Get directory info
+file_system_tool(mode="info", path="C:\Projects\MyApp")
+# Returns:
+# Path: C:\Projects\MyApp
+# Type: Directory
+# Size: 0 B (0 bytes)
+# Created: 2023-12-01 10:00:00
+# Modified: 2024-01-15 11:45:30
+# Accessed: 2024-01-15 16:00:00
+# Read-only: False
+# Contents: 15 files, 3 directories
+
+# Get symlink info
+file_system_tool(mode="info", path="shortcut.lnk")
+# Returns:
+# Path: C:\Users\John\Desktop\shortcut.lnk
+# Type: Symlink
+# Link target: C:\Program Files\MyApp\app.exe
+# ...
+```
+
+### Metadata Fields
+
+- **Path**: Absolute resolved path
+- **Type**: File | Directory | Symlink | Other
+- **Size**: Human-readable + bytes
+- **Created**: Creation timestamp
+- **Modified**: Last write timestamp
+- **Accessed**: Last access timestamp
+- **Read-only**: Write permission status
+- **Extension**: File extension (files only)
+- **Contents**: File/directory count (directories only)
+- **Link target**: Target path (symlinks only)
+
+## Practical Use Cases
+
+### Backup Configuration Files
+
+```python
+# Find all config files
+file_system_tool(mode="search", path="C:\Program Files", pattern="**/config.json")
+
+# Copy each to backup location
+file_system_tool(
+    mode="copy",
+    path="C:\Program Files\MyApp\config.json",
+    destination="D:\Backups\MyApp_config_20240115.json"
+)
+```
+
+### Clean Temporary Files
+
+```python
+# Find temp files
+file_system_tool(mode="search", path="C:\Temp", pattern="*.tmp")
+
+# Delete old temp files (use Shell for date filtering)
+# See PowerShell tool for date-based deletion
+```
+
+### Generate File Inventory
+
+```python
+# Get project structure
+file_system_tool(mode="list", path="C:\Projects\MyApp", recursive=True)
+
+# Get size of each large file
+file_system_tool(mode="info", path="C:\Projects\MyApp\data\large_file.db")
+```
+
+### Migrate Project Structure
+
+```python
+# Copy entire project
+file_system_tool(
+    mode="copy",
+    path="C:\Projects\OldLocation",
+    destination="D:\Projects\NewLocation"
+)
+
+# Verify copy
+file_system_tool(mode="list", path="D:\Projects\NewLocation", recursive=True)
+
+# Delete original (use with caution!)
+file_system_tool(mode="delete", path="C:\Projects\OldLocation", recursive=True)
+```
+
+## Implementation Details
+
+### Path Resolution
+
+```python
+from platformdirs import user_desktop_dir
+import os
+
+default_dir = user_desktop_dir()  # C:\Users\<User>\Desktop
+if not os.path.isabs(path):
+    path = os.path.join(default_dir, path)
+```
+
+### Size Formatting
+
+```python
+def format_size(size_bytes: int) -> str:
+    if size_bytes < 1024:
+        return f'{size_bytes} B'
+    elif size_bytes < 1024 ** 2:
+        return f'{size_bytes / 1024:.1f} KB'
+    elif size_bytes < 1024 ** 3:
+        return f'{size_bytes / (1024 ** 2):.1f} MB'
+    else:
+        return f'{size_bytes / (1024 ** 3):.1f} GB'
+```
+
+### Pattern Matching
+
+- **List mode**: Uses `fnmatch.fnmatch()` for shell-style wildcards
+- **Search mode**: Uses `Path.glob()` and `Path.rglob()` for advanced patterns
+
+## Related Tools
+
+- **PowerShell**: Raw file operations with full PowerShell capabilities
+- **Snapshot**: Capture screenshots for visual file browser navigation
+- **Click**: Interact with File Explorer GUI
+- **Type**: Enter file paths in dialogs

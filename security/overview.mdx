@@ -1,0 +1,188 @@
+---
+title: Security Overview
+description: Critical security considerations for Windows-MCP deployment and operation
+---
+
+<Warning>
+  **READ THIS BEFORE DEPLOYING WINDOWS-MCP**
+  
+  Windows-MCP interacts **directly with your actual Windows operating system** with no sandboxing or isolation. Every tool call executes real actions on your physical or virtual Windows machine.
+</Warning>
+
+## Direct Operating System Interaction
+
+Windows-MCP is **NOT** a sandboxed or isolated tool. It provides powerful automation capabilities that interact directly with your Windows operating system on behalf of the connected LLM agent.
+
+### What This Means
+
+- **Real System Actions**: Every tool call executes real actions on your physical or virtual Windows machine
+- **No Safety Net**: There is no intermediate layer, simulation, or preview mode
+- **User Permissions**: The MCP server operates with the same permissions as the user running it
+- **Full System Access**: Can perform any action that the current user can perform
+- **Persistent Changes**: Actions taken can permanently modify your system state
+
+## Irreversible and Destructive Changes
+
+<Warning>
+  Many operations performed by Windows-MCP **CANNOT BE UNDONE**
+</Warning>
+
+The following operations are permanent and irreversible:
+
+- **File Deletions**: Files deleted through PowerShell or UI interactions may be permanently lost
+- **Data Overwrites**: Text typed with `clear=True` replaces existing content without recovery options
+- **System Modifications**: PowerShell commands can modify registry, services, and system configurations
+- **Application Actions**: Clicking "Delete", "Yes", or "Confirm" buttons has real consequences
+- **No Undo/Rollback**: Unlike text editors or IDEs, most Windows operations don't have an undo feature
+
+## Where NOT to Deploy
+
+<Warning>
+  **DO NOT** deploy Windows-MCP on systems where you cannot tolerate the risk of accidental data loss, system configuration changes, or security breaches.
+</Warning>
+
+### Never Deploy On:
+
+- Production servers or workstations
+- Systems containing irreplaceable data
+- Machines with access to sensitive databases or networks
+- Compliance-regulated environments (healthcare, finance, government)
+- Shared systems or multi-user environments without explicit consent
+- Any system you don't fully control and can't afford to lose
+
+### Specific Risks:
+
+- Accidental data loss or corruption
+- Unintended system configuration changes
+- Exposure of sensitive information through screenshots
+- Execution of malicious commands if the LLM is compromised
+- Compliance violations in regulated environments
+
+## Telemetry and Privacy
+
+Windows-MCP collects anonymous usage data to help improve the MCP server.
+
+### What We Collect:
+
+- Tool execution status (success/failure)
+- Execution duration
+- Tool name
+- Client name and version (e.g., Claude Desktop)
+- Anonymized session IDs
+
+### What We DO NOT Collect:
+
+- **Tool arguments** (text typed, coordinates, file paths, etc.)
+- **Tool outputs** (screenshots, command results, page content, etc.)
+- **Personal Information** (IP addresses are not stored, no user identifiers beyond a random UUID)
+
+### Disabling Telemetry:
+
+Telemetry is enabled by default but can be disabled by setting the `ANONYMIZED_TELEMETRY` environment variable to `false` in the MCP server configuration:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+## Data Privacy
+
+- Windows-MCP processes commands **locally on your machine**
+- Screenshots and state captures remain on your local system
+- Web scraping may expose browsing activity to target websites
+- The **Snapshot** tool captures screenshots that may contain sensitive information
+- The **Scrape** tool may fetch content from untrusted websites
+
+## Tool Annotations Reference
+
+All tools include security-relevant annotations that help LLM agents understand the safety profile:
+
+- **readOnlyHint**: `true` if the tool only reads data
+- **destructiveHint**: `true` if the tool may perform destructive updates
+- **idempotentHint**: `true` if repeated calls have no additional effect
+- **openWorldHint**: `true` if the tool interacts with external entities
+
+Refer to the source code (`main.py`) for complete tool annotations.
+
+## Vulnerability Reporting
+
+<Warning>
+  **DO NOT** open a public GitHub issue for security vulnerabilities.
+</Warning>
+
+We take security vulnerabilities seriously. If you discover a security issue, please follow responsible disclosure practices.
+
+### How to Report:
+
+1. **Email**: Send details to [jeogeoalukka@gmail.com](mailto:jeogeoalukka@gmail.com)
+2. **GitHub Security Advisories**: Use the [GitHub Security Advisory](https://github.com/CursorTouch/Windows-MCP/security/advisories) feature (preferred)
+
+### What to Include:
+
+- Description of the vulnerability
+- Steps to reproduce the issue
+- Potential impact assessment
+- Suggested fix (if available)
+- Your contact information for follow-up
+
+### Response Timeline:
+
+- **Initial Response**: Within 48 hours
+- **Status Update**: Within 7 days
+- **Fix Timeline**: Depends on severity (critical issues prioritized)
+
+## Security Updates
+
+### Staying Informed:
+
+- Watch the [GitHub repository](https://github.com/CursorTouch/Windows-MCP) for security announcements
+- Follow [@CursorTouch](https://x.com/CursorTouch) on X for updates
+- Join the [Discord Community](https://discord.com/invite/Aue9Yj2VzS) for discussions
+
+### Update Policy:
+
+- Security patches will be released as soon as possible
+- Critical vulnerabilities will be addressed within 7 days
+- Users will be notified via GitHub releases and community channels
+
+## Disclaimer
+
+<Warning>
+  **USE AT YOUR OWN RISK**
+  
+  Windows-MCP is provided "as is" without warranty of any kind.
+</Warning>
+
+### The Maintainers Are Not Responsible For:
+
+- Data loss or system damage caused by tool usage
+- Security breaches resulting from improper configuration
+- Actions performed by LLM agents using this MCP server
+- Compliance violations in regulated environments
+
+### Users Are Solely Responsible For:
+
+- Ensuring appropriate use in their environment
+- Implementing necessary security controls
+- Complying with applicable laws and regulations
+- Monitoring and auditing tool usage
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment Best Practices" icon="shield-check" href="/security/deployment-best-practices">
+    Learn how to safely deploy Windows-MCP in VMs, sandboxes, and test environments
+  </Card>
+  <Card title="Tool Risk Assessment" icon="triangle-exclamation" href="/security/tool-risk-assessment">
+    Understand the risk levels of each tool and their security implications
+  </Card>
+</CardGroup>

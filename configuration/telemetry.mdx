@@ -1,0 +1,377 @@
+---
+title: "Telemetry"
+description: "Understanding Windows-MCP's anonymous usage data collection"
+---
+
+Windows-MCP collects anonymous usage data to help improve the MCP server. This page explains what data is collected, how it's used, and how to disable it.
+
+## Overview
+
+Telemetry is **enabled by default** but can be easily disabled. The data collected is completely anonymous and focused on understanding how tools are used to improve performance and reliability.
+
+<Note>
+  **Your privacy matters**: No personal information, tool arguments, command outputs, or screenshots are ever collected.
+</Note>
+
+---
+
+## What Data is Collected
+
+Windows-MCP uses PostHog for anonymous analytics. Here's exactly what is tracked:
+
+### Tool Execution Metrics
+
+<ParamField path="tool_name" type="string">
+  The name of the tool that was executed
+  
+  **Examples:** `Snapshot`, `Click`, `Type`, `PowerShell`
+</ParamField>
+
+<ParamField path="success" type="boolean">
+  Whether the tool execution succeeded or failed
+  
+  **Values:** `true` or `false`
+</ParamField>
+
+<ParamField path="duration_ms" type="integer">
+  How long the tool took to execute in milliseconds
+  
+  **Example:** `450` (450 milliseconds)
+</ParamField>
+
+<ParamField path="client_name" type="string">
+  The name of the MCP client application
+  
+  **Examples:** `Claude Desktop`, `Perplexity`, `Gemini CLI`
+</ParamField>
+
+<ParamField path="client_version" type="string">
+  The version of the MCP client
+  
+  **Example:** `1.2.3`
+</ParamField>
+
+<ParamField path="mode" type="string">
+  Operating mode of the server
+  
+  **Values:** `local` or `remote`
+</ParamField>
+
+<ParamField path="session_id" type="string">
+  A random session identifier (regenerated on each server start)
+  
+  **Format:** `mcp_{timestamp}_{process_id}`
+</ParamField>
+
+### User Identification
+
+<ParamField path="user_id" type="string">
+  A randomly generated UUID stored locally
+  
+  - Generated once and stored in `.windows-mcp-user-id` in your temp folder
+  - Used to understand unique user count
+  - **Cannot be linked to your identity**
+</ParamField>
+
+---
+
+## What is NOT Collected
+
+Windows-MCP explicitly **does not collect**:
+
+<CardGroup cols={2}>
+  <Card title="Tool Arguments" icon="ban">
+    Text you type, coordinates clicked, file paths, URLs, or any input parameters
+  </Card>
+  <Card title="Tool Outputs" icon="ban">
+    Command results, screenshots, scraped content, or any output data
+  </Card>
+  <Card title="Personal Information" icon="ban">
+    Names, email addresses, IP addresses, or any identifying information
+  </Card>
+  <Card title="System Details" icon="ban">
+    Computer name, username, installed software, or system configuration
+  </Card>
+</CardGroup>
+
+<Warning>
+  **Security Guarantee**: Screenshots captured by the Snapshot tool are **never transmitted** for telemetry. They remain entirely on your local machine.
+</Warning>
+
+---
+
+## Example Telemetry Events
+
+### Successful Tool Execution
+
+```json
+{
+  "event": "tool_executed",
+  "properties": {
+    "tool_name": "Click",
+    "success": true,
+    "duration_ms": 120,
+    "client_name": "Claude Desktop",
+    "client_version": "1.5.0",
+    "mode": "local",
+    "session_id": "mcp_1710432000000_1234"
+  }
+}
+```
+
+### Failed Tool Execution
+
+```json
+{
+  "event": "tool_executed",
+  "properties": {
+    "tool_name": "PowerShell",
+    "success": false,
+    "duration_ms": 85,
+    "client_name": "Perplexity",
+    "client_version": "2.1.0",
+    "mode": "local",
+    "session_id": "mcp_1710432000000_1234"
+  }
+}
+```
+
+<Note>
+  Notice that **no information about what command failed** or **why it failed** is included - only that the PowerShell tool failed.
+</Note>
+
+---
+
+## How the Data is Used
+
+The anonymous telemetry data helps the Windows-MCP team:
+
+1. **Understand tool usage patterns**: Which tools are most/least used
+2. **Identify performance issues**: Tools that consistently take too long
+3. **Detect failure trends**: Tools with high failure rates that need improvement
+4. **Measure adoption**: Number of active users and client applications
+5. **Prioritize features**: Focus development on the most-used tools
+
+**The data is never sold or shared with third parties.**
+
+---
+
+## Disabling Telemetry
+
+Telemetry can be disabled by setting the `ANONYMIZED_TELEMETRY` environment variable to `false`.
+
+### Configuration
+
+<ParamField path="ANONYMIZED_TELEMETRY" type="string" default="true">
+  Set to `false` to disable all telemetry collection
+  
+  ```json
+  "env": {
+    "ANONYMIZED_TELEMETRY": "false"
+  }
+  ```
+</ParamField>
+
+### Examples
+
+<CodeGroup>
+
+```json Claude Desktop
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+```json Perplexity Desktop
+{
+  "command": "uvx",
+  "args": ["windows-mcp"],
+  "env": {
+    "ANONYMIZED_TELEMETRY": "false"
+  }
+}
+```
+
+```bash Command Line
+set ANONYMIZED_TELEMETRY=false
+uvx windows-mcp
+```
+
+</CodeGroup>
+
+<Tip>
+  The value must be the string `"false"` (lowercase). Other values like `"False"`, `"0"`, or `false` (boolean) will not disable telemetry.
+</Tip>
+
+---
+
+## Implementation Details
+
+### Initialization
+
+```python
+# From source code (__main__.py:54)
+if os.getenv("ANONYMIZED_TELEMETRY", "true").lower() != "false":
+    analytics = PostHogAnalytics()
+```
+
+Telemetry is initialized during server startup unless explicitly disabled.
+
+### User ID Generation
+
+```python
+# From source code (analytics.py:64-78)
+@property
+def user_id(self) -> str:
+    if self._user_id:
+        return self._user_id
+
+    user_id_file = self.TEMP_FOLDER / ".windows-mcp-user-id"
+    if user_id_file.exists():
+        self._user_id = user_id_file.read_text(encoding="utf-8").strip()
+    else:
+        self._user_id = uuid7str()  # Random UUID
+        try:
+            user_id_file.write_text(self._user_id, encoding="utf-8")
+        except Exception as e:
+            logger.warning(f"Could not persist user ID: {e}")
+
+    return self._user_id
+```
+
+A random UUID is generated once and stored in your system's temp folder.
+
+### Event Tracking
+
+```python
+# From source code (analytics.py:80-92)
+async def track_tool(self, tool_name: str, result: Dict[str, Any]) -> None:
+    if self.client:
+        self.client.capture(
+            distinct_id=self.user_id,
+            event="tool_executed",
+            properties={
+                "tool_name": tool_name,
+                "session_id": self.mcp_interaction_id,
+                "mode": self.mode,
+                "process_person_profile": True,
+                **result,  # Includes success, duration_ms, client info
+            },
+        )
+```
+
+Each tool execution is logged with minimal metadata.
+
+---
+
+## Console Output
+
+When telemetry is enabled, you'll see analytics messages in the console:
+
+```bash
+[Analytics] Click-Tool: SUCCESS (120ms)
+[Analytics] Type-Tool: SUCCESS (450ms)
+[Analytics] Snapshot-Tool: SUCCESS (890ms)
+[Analytics] PowerShell-Tool: FAILED (85ms)
+```
+
+These messages confirm what data is being tracked locally and help with debugging.
+
+<Note>
+  Console output appears regardless of telemetry setting. Only the **transmission to PostHog** is disabled when `ANONYMIZED_TELEMETRY=false`.
+</Note>
+
+---
+
+## PostHog Configuration
+
+Windows-MCP uses PostHog's US cloud instance:
+
+```python
+# From source code (analytics.py:42-44)
+API_KEY = "phc_uxdCItyVTjXNU0sMPr97dq3tcz39scQNt3qjTYw5vLV"
+HOST = "https://us.i.posthog.com"
+```
+
+**Configuration:**
+- GeoIP lookup: Disabled (`disable_geoip=False` in code but used only for PostHog features)
+- Exception autocapture: Enabled (captures exception types, not sensitive data)
+- Debug mode: Disabled
+
+---
+
+## Privacy Compliance
+
+### GDPR Compliance
+
+<CardGroup cols={2}>
+  <Card title="Data Minimization" icon="minimize">
+    Only essential usage metrics are collected
+  </Card>
+  <Card title="Anonymization" icon="user-secret">
+    No personally identifiable information is collected
+  </Card>
+  <Card title="User Control" icon="toggle-on">
+    Easy opt-out via `ANONYMIZED_TELEMETRY=false`
+  </Card>
+  <Card title="Transparency" icon="eye">
+    Full disclosure of what data is collected
+  </Card>
+</CardGroup>
+
+### Data Retention
+
+PostHog retains anonymous event data according to their [data retention policy](https://posthog.com/docs/privacy). No raw personal data is stored.
+
+---
+
+## Frequently Asked Questions
+
+<AccordionGroup>
+  <Accordion title="Can telemetry data be linked back to me?">
+    No. The `user_id` is a randomly generated UUID with no connection to your identity, computer name, or any personal information. Even if someone obtained the telemetry data, they could not determine who you are or what commands you ran.
+  </Accordion>
+  
+  <Accordion title="Are my screenshots uploaded?">
+    Absolutely not. Screenshots captured by the Snapshot tool remain entirely on your local machine. They are never transmitted anywhere for telemetry purposes.
+  </Accordion>
+  
+  <Accordion title="What if I'm in a compliance-regulated environment?">
+    Disable telemetry by setting `ANONYMIZED_TELEMETRY=false`. This ensures zero data is transmitted to external services. See the [Security Policy](/security) for more deployment recommendations.
+  </Accordion>
+  
+  <Accordion title="Does disabling telemetry affect functionality?">
+    No. All Windows-MCP tools work exactly the same with telemetry disabled. You'll only lose the contribution of your anonymous usage patterns to help improve the project.
+  </Accordion>
+  
+  <Accordion title="How do I verify telemetry is disabled?">
+    Check the server logs when it starts. If you see `[Analytics]` messages in the console, telemetry is still active. Verify `ANONYMIZED_TELEMETRY` is set to the string `"false"` (not `False`, `0`, or boolean `false`).
+  </Accordion>
+  
+  <Accordion title="Can I review the telemetry code?">
+    Yes! Windows-MCP is open source. Review `src/windows_mcp/analytics.py` and `src/windows_mcp/__main__.py` to see exactly what's tracked:
+    
+    - [analytics.py on GitHub](https://github.com/CursorTouch/Windows-MCP/blob/main/src/windows_mcp/analytics.py)
+    - [__main__.py on GitHub](https://github.com/CursorTouch/Windows-MCP/blob/main/src/windows_mcp/__main__.py)
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Additional Resources
+
+- [Environment Variables](/configuration/environment-variables) - Full environment variable reference
+- [Security Policy](/security) - Comprehensive security guidelines
+- [PostHog Privacy Policy](https://posthog.com/privacy) - PostHog's data handling practices
+
+<Note>
+  **Questions or concerns?** Open an issue on [GitHub](https://github.com/CursorTouch/Windows-MCP/issues) or join the [Discord community](https://discord.com/invite/Aue9Yj2VzS).
+</Note>

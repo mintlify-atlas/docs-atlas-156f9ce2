@@ -1,0 +1,305 @@
+---
+title: "Environment Variables"
+description: "Configure Windows-MCP behavior using environment variables"
+---
+
+Windows-MCP supports several environment variables to control its behavior. These variables are set in your MCP client configuration file.
+
+## Required for Remote Mode
+
+These environment variables are **required** when running Windows-MCP in remote mode.
+
+<ParamField path="MODE" type="string" default="local">
+  Operating mode for Windows-MCP
+  
+  **Values:**
+  - `local` (default): Run directly on the local Windows machine
+  - `remote`: Connect to windowsmcp.io for cloud-hosted automation
+  
+  ```json
+  "env": {
+    "MODE": "remote"
+  }
+  ```
+</ParamField>
+
+<ParamField path="SANDBOX_ID" type="string" required="when MODE=remote">
+  The sandbox/VM identifier from the windowsmcp.io dashboard
+  
+  This uniquely identifies your Windows VM instance in the cloud.
+  
+  ```json
+  "env": {
+    "SANDBOX_ID": "vm-abc123def456"
+  }
+  ```
+  
+  <Note>
+    You can find your `SANDBOX_ID` in the windowsmcp.io dashboard after creating a VM.
+  </Note>
+</ParamField>
+
+<ParamField path="API_KEY" type="string" required="when MODE=remote">
+  Your Windows-MCP API key for authentication
+  
+  This key authenticates your MCP server with the windowsmcp.io dashboard.
+  
+  ```json
+  "env": {
+    "API_KEY": "wmcp_1234567890abcdef"
+  }
+  ```
+  
+  <Warning>
+    Keep your API key secret. Never commit it to version control or share it publicly.
+  </Warning>
+</ParamField>
+
+---
+
+## Optional Configuration
+
+These environment variables are optional and control additional features.
+
+<ParamField path="ANONYMIZED_TELEMETRY" type="string" default="true">
+  Enable or disable anonymous usage telemetry
+  
+  **Values:**
+  - `true` (default): Enable telemetry collection
+  - `false`: Disable all telemetry
+  
+  ```json
+  "env": {
+    "ANONYMIZED_TELEMETRY": "false"
+  }
+  ```
+  
+  See [Telemetry](/configuration/telemetry) for detailed information about what data is collected.
+</ParamField>
+
+---
+
+## Configuration Examples
+
+### Local Mode (Default)
+
+Minimal configuration with no environment variables:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"]
+    }
+  }
+}
+```
+
+### Local Mode with Telemetry Disabled
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+### Remote Mode (Full Configuration)
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "vm-abc123def456",
+        "API_KEY": "wmcp_1234567890abcdef",
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Environment Variable Loading
+
+Windows-MCP loads environment variables from multiple sources:
+
+<Steps>
+  <Step title="MCP client configuration">
+    Environment variables defined in `claude_desktop_config.json` or equivalent config file
+    
+    ```json
+    "env": {
+      "MODE": "remote"
+    }
+    ```
+  </Step>
+  
+  <Step title=".env file (optional)">
+    A `.env` file in the Windows-MCP directory (when running from source)
+    
+    ```bash
+    MODE=local
+    ANONYMIZED_TELEMETRY=false
+    ```
+  </Step>
+  
+  <Step title="System environment variables">
+    Windows system environment variables (lowest priority)
+  </Step>
+</Steps>
+
+<Note>
+  The MCP client configuration takes precedence over `.env` files and system variables.
+</Note>
+
+---
+
+## Security Best Practices
+
+### Protecting API Keys
+
+<CardGroup cols={2}>
+  <Card title="Don't commit to Git" icon="github">
+    Add `claude_desktop_config.json` to `.gitignore`
+  </Card>
+  <Card title="Use environment files" icon="file-lock">
+    Store keys in `.env` files (excluded from version control)
+  </Card>
+  <Card title="Rotate regularly" icon="rotate">
+    Change API keys periodically and after any suspected compromise
+  </Card>
+  <Card title="Limit sharing" icon="user-lock">
+    Only share configurations without sensitive values
+  </Card>
+</CardGroup>
+
+### Safe Configuration Sharing
+
+When sharing configurations, replace sensitive values with placeholders:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "<your-sandbox-id>",
+        "API_KEY": "<your-api-key>"
+      }
+    }
+  }
+}
+```
+
+---
+
+## Validation
+
+Windows-MCP validates environment variables on startup:
+
+### Remote Mode Validation
+
+```python
+# From source code (__main__.py)
+if config.mode == "remote":
+    if not config.sandbox_id:
+        raise ValueError("SANDBOX_ID is required for MODE: remote")
+    if not config.api_key:
+        raise ValueError("API_KEY is required for MODE: remote")
+```
+
+If required variables are missing, you'll see an error message:
+
+```
+ValueError: SANDBOX_ID is required for MODE: remote
+```
+
+### Telemetry Validation
+
+```python
+# From source code (__main__.py)
+if os.getenv("ANONYMIZED_TELEMETRY", "true").lower() != "false":
+    analytics = PostHogAnalytics()
+```
+
+Telemetry is enabled by default unless explicitly set to `"false"`.
+
+---
+
+## Troubleshooting
+
+### Missing Required Variables
+
+**Error:** `ValueError: SANDBOX_ID is required for MODE: remote`
+
+**Solution:** Add the missing environment variable to your configuration:
+
+```json
+"env": {
+  "MODE": "remote",
+  "SANDBOX_ID": "your-sandbox-id",
+  "API_KEY": "your-api-key"
+}
+```
+
+### Authentication Failures
+
+**Error:** `AuthError: Authentication failed`
+
+**Solution:** Verify your `API_KEY` and `SANDBOX_ID` are correct:
+
+1. Check for typos in the values
+2. Ensure there are no extra spaces
+3. Verify the key is still valid in the windowsmcp.io dashboard
+4. Try regenerating the API key if the issue persists
+
+### Telemetry Not Disabled
+
+**Issue:** Telemetry is still active after setting `ANONYMIZED_TELEMETRY=false`
+
+**Solution:** Check the exact value and capitalization:
+
+```json
+// Correct
+"ANONYMIZED_TELEMETRY": "false"
+
+// Incorrect - will enable telemetry
+"ANONYMIZED_TELEMETRY": "False"
+"ANONYMIZED_TELEMETRY": "0"
+"ANONYMIZED_TELEMETRY": false  // Use string "false", not boolean
+```
+
+<Tip>
+  Enable debug logging to see which environment variables are loaded. Check the MCP server logs in your client application.
+</Tip>
+
+---
+
+## Environment Variable Reference
+
+| Variable | Type | Default | Required | Description |
+|----------|------|---------|----------|-------------|
+| `MODE` | string | `local` | No | Operating mode (`local` or `remote`) |
+| `SANDBOX_ID` | string | - | When `MODE=remote` | VM identifier from windowsmcp.io |
+| `API_KEY` | string | - | When `MODE=remote` | Authentication key for remote mode |
+| `ANONYMIZED_TELEMETRY` | string | `true` | No | Enable (`true`) or disable (`false`) telemetry |
+
+<Note>
+  All environment variables are case-sensitive. Use the exact names shown above.
+</Note>

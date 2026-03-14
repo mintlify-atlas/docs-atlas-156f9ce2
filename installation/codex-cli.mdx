@@ -1,0 +1,326 @@
+---
+title: 'Codex CLI'
+description: 'Install Windows-MCP on OpenAI Codex CLI'
+---
+
+## Prerequisites
+
+- Node.js and npm installed
+- UV package manager installed (`pip install uv`)
+- Python 3.13+
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install Codex CLI">
+    Install Codex CLI globally using npm:
+    ```bash
+    npm install -g @openai/codex
+    ```
+  </Step>
+
+  <Step title="Locate Configuration File">
+    Navigate to the Codex configuration directory:
+    ```bash
+    cd %USERPROFILE%\.codex
+    ```
+
+    Or open it in File Explorer:
+    ```
+    %USERPROFILE%\.codex
+    ```
+  </Step>
+
+  <Step title="Edit config.toml">
+    Open `config.toml` in your preferred text editor and add the Windows-MCP configuration.
+
+    <Note>
+    Codex CLI uses TOML format, not JSON like other MCP clients.
+    </Note>
+
+    <Tabs>
+      <Tab title="PyPI (Recommended)">
+        ```toml
+        [mcp_servers.windows-mcp]
+        command = "uvx"
+        args = [
+          "windows-mcp"
+        ]
+        ```
+      </Tab>
+
+      <Tab title="From Source">
+        ```toml
+        [mcp_servers.windows-mcp]
+        command = "uv"
+        args = [
+          "--directory",
+          "<path to the windows-mcp directory>",
+          "run",
+          "windows-mcp"
+        ]
+        ```
+
+        Replace `<path to the windows-mcp directory>` with the full path where you cloned the repository.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Save and Restart">
+    1. Save the `config.toml` file
+    2. Restart Codex CLI in your terminal
+    3. Verify Windows-MCP is loaded and tools are available
+  </Step>
+</Steps>
+
+## Configuration Examples
+
+### Basic Configuration
+
+Minimal configuration with PyPI installation:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "uvx"
+args = [
+  "windows-mcp"
+]
+```
+
+### Source Installation
+
+For development or customization:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "uv"
+args = [
+  "--directory",
+  "C:\\Users\\YourUsername\\Projects\\Windows-MCP",
+  "run",
+  "windows-mcp"
+]
+```
+
+<Warning>
+In TOML files, use double backslashes for Windows paths: `C:\\Users\\...`
+</Warning>
+
+### With Environment Variables
+
+Disable telemetry or configure other options:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "uvx"
+args = ["windows-mcp"]
+
+[mcp_servers.windows-mcp.env]
+ANONYMIZED_TELEMETRY = "false"
+```
+
+### Remote Mode
+
+Connect to remote Windows VMs via windowsmcp.io:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "uvx"
+args = ["windows-mcp"]
+
+[mcp_servers.windows-mcp.env]
+MODE = "remote"
+SANDBOX_ID = "your-sandbox-id"
+API_KEY = "your-api-key"
+```
+
+### Multiple MCP Servers
+
+Combine Windows-MCP with other MCP servers:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "uvx"
+args = ["windows-mcp"]
+
+[mcp_servers.filesystem]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"]
+
+[mcp_servers.git]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-git"]
+```
+
+## Troubleshooting
+
+### Server Not Loading
+
+<Note>
+First-time installation requires dependency setup which may take 1-2 minutes. Restart Codex CLI if it times out.
+</Note>
+
+**Common issues and solutions**:
+
+1. **UV not found**:
+   ```bash
+   # Verify UV is installed
+   uv --version
+   
+   # If not found, install it
+   pip install uv
+   ```
+
+2. **Invalid TOML syntax**:
+   - Check for proper quoting of strings
+   - Verify section headers use `[brackets]`
+   - No trailing commas in TOML arrays
+   - Validate at [toml-lint.com](https://www.toml-lint.com)
+
+3. **Path issues**:
+   - Use double backslashes: `C:\\Users\\...`
+   - Or use forward slashes: `C:/Users/...`
+   - Verify the directory exists
+
+### TOML Syntax Reference
+
+Key differences from JSON:
+
+```toml
+# This is a comment (allowed in TOML)
+
+[section.name]  # Section header
+key = "value"   # String
+number = 42     # Integer
+bool = true     # Boolean (lowercase)
+array = [       # Array
+  "item1",
+  "item2"       # No trailing comma needed
+]
+```
+
+### PATH Environment Variable
+
+If `uvx` is not found in PATH:
+
+```bash
+# Find UV location
+where uv
+```
+
+Use the absolute path in config.toml:
+
+```toml
+[mcp_servers.windows-mcp]
+command = "C:\\Users\\YourUsername\\.local\\bin\\uv.exe"
+args = ["run", "windows-mcp"]
+```
+
+### Tools Not Appearing
+
+If Windows-MCP tools aren't available:
+
+1. **Check terminal output** for error messages
+2. **Verify MCP server started**:
+   - Look for "Windows-MCP server started" message
+   - Check for any Python errors or warnings
+3. **Restart Codex CLI** completely
+4. **Verify file location**:
+   ```bash
+   dir %USERPROFILE%\.codex\config.toml
+   ```
+
+### Permission Issues
+
+<Warning>
+Windows-MCP runs with the same permissions as Codex CLI. Avoid running as Administrator unless necessary.
+</Warning>
+
+If you see permission errors:
+- Run Codex CLI with standard user permissions
+- Check Windows User Account Control (UAC) settings
+- Verify file system permissions for the Windows-MCP directory
+
+### Python Version Check
+
+Ensure Python 3.13+ is installed:
+
+```bash
+python --version
+```
+
+If you have multiple Python versions, UV should handle version selection automatically.
+
+## Verifying Installation
+
+After configuration, test Windows-MCP:
+
+1. Start Codex CLI:
+   ```bash
+   codex
+   ```
+
+2. Check available tools:
+   ```
+   What MCP tools are available?
+   ```
+
+3. Test a simple command:
+   ```
+   Use the Snapshot tool to capture my desktop
+   ```
+
+Expected Windows-MCP tools:
+- **Click** - Click at screen coordinates
+- **Type** - Type text into UI elements
+- **Scroll** - Scroll windows or regions
+- **Move** - Move mouse or drag items
+- **Shortcut** - Press keyboard shortcuts
+- **Snapshot** - Capture desktop state
+- **App** - Launch and manage applications
+- **Shell** - Execute PowerShell commands
+- **Scrape** - Extract web page content
+- **MultiSelect** - Select multiple items
+- **MultiEdit** - Edit multiple fields
+- **Clipboard** - Read/write clipboard
+- **Process** - Manage running processes
+- **Notification** - Show Windows notifications
+- **Registry** - Access Windows Registry
+
+## Configuration File Location
+
+The Codex CLI configuration file is located at:
+
+```
+%USERPROFILE%\.codex\config.toml
+```
+
+Full path example:
+```
+C:\Users\YourUsername\.codex\config.toml
+```
+
+<Note>
+If the `config.toml` file doesn't exist, create it manually with the basic TOML structure.
+</Note>
+
+## Updating Codex CLI
+
+To update to the latest version:
+
+```bash
+npm update -g @openai/codex
+```
+
+Check current version:
+
+```bash
+codex --version
+```
+
+## Additional Resources
+
+- [OpenAI Codex Documentation](https://platform.openai.com/docs/guides/code)
+- [TOML Specification](https://toml.io/en/)
+- [Windows-MCP GitHub Repository](https://github.com/CursorTouch/Windows-MCP)
+- [Community Discord](https://discord.com/invite/Aue9Yj2VzS)

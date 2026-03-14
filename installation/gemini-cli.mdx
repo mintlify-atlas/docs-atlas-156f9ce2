@@ -1,0 +1,294 @@
+---
+title: 'Gemini CLI'
+description: 'Install Windows-MCP on Google Gemini CLI'
+---
+
+## Prerequisites
+
+- Node.js and npm installed
+- UV package manager installed (`pip install uv`)
+- Python 3.13+
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install Gemini CLI">
+    Install the Gemini CLI globally using npm:
+    ```bash
+    npm install -g @google/gemini-cli
+    ```
+  </Step>
+
+  <Step title="Locate Settings File">
+    Navigate to the Gemini configuration directory:
+    ```bash
+    cd %USERPROFILE%\.gemini
+    ```
+
+    Or open it in File Explorer:
+    ```
+    %USERPROFILE%\.gemini
+    ```
+  </Step>
+
+  <Step title="Edit settings.json">
+    Open `settings.json` in your preferred text editor and add the Windows-MCP configuration.
+
+    <Tabs>
+      <Tab title="PyPI (Recommended)">
+        ```json
+        {
+          "theme": "Default",
+          "mcpServers": {
+            "windows-mcp": {
+              "command": "uvx",
+              "args": [
+                "windows-mcp"
+              ]
+            }
+          }
+        }
+        ```
+      </Tab>
+
+      <Tab title="From Source">
+        ```json
+        {
+          "theme": "Default",
+          "mcpServers": {
+            "windows-mcp": {
+              "command": "uv",
+              "args": [
+                "--directory",
+                "<path to the windows-mcp directory>",
+                "run",
+                "windows-mcp"
+              ]
+            }
+          }
+        }
+        ```
+
+        Replace `<path to the windows-mcp directory>` with the full path where you cloned the repository.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Save and Restart">
+    1. Save the `settings.json` file
+    2. Restart Gemini CLI in your terminal
+    3. Verify Windows-MCP is loaded and tools are available
+  </Step>
+</Steps>
+
+## Configuration Examples
+
+### Basic Configuration
+
+Minimal configuration with PyPI installation:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Source Installation
+
+For development or customization:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\YourUsername\\Projects\\Windows-MCP",
+        "run",
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### With Environment Variables
+
+Disable telemetry or configure remote mode:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+### Remote Mode
+
+Connect to remote Windows VMs via windowsmcp.io:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "your-sandbox-id",
+        "API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Multiple MCP Servers
+
+Combine Windows-MCP with other MCP servers:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"]
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Server Not Loading
+
+<Note>
+First-time installation requires dependency setup which may take 1-2 minutes. Restart Gemini CLI if it times out.
+</Note>
+
+**Check these common issues**:
+
+1. **UV not found**:
+   ```bash
+   # Verify UV is installed
+   uv --version
+   
+   # If not found, install it
+   pip install uv
+   ```
+
+2. **Invalid JSON syntax**:
+   - Ensure all strings are quoted
+   - Check for trailing commas
+   - Validate JSON at [jsonlint.com](https://jsonlint.com)
+
+3. **Path issues**:
+   - Use double backslashes in Windows paths: `C:\\Users\\...`
+   - Or use forward slashes: `C:/Users/...`
+   - Verify the path exists
+
+### PATH Environment Variable
+
+If `uvx` command is not found, use the full path:
+
+```bash
+# Find UV location
+where uv
+```
+
+Then use the absolute path in settings.json:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "C:\\Users\\YourUsername\\.local\\bin\\uv.exe",
+      "args": ["run", "windows-mcp"]
+    }
+  }
+}
+```
+
+### Tools Not Appearing
+
+If Windows-MCP tools aren't available in Gemini CLI:
+
+1. Check for errors in the terminal output
+2. Verify the MCP server started successfully
+3. Restart Gemini CLI completely
+4. Check the settings.json file location is correct
+
+### Gemini CLI Version
+
+Ensure you're using a recent version:
+
+```bash
+npm list -g @google/gemini-cli
+```
+
+Update if needed:
+
+```bash
+npm update -g @google/gemini-cli
+```
+
+## Verifying Installation
+
+After configuration, test Windows-MCP:
+
+1. Start Gemini CLI:
+   ```bash
+   gemini
+   ```
+
+2. Check available tools:
+   ```
+   What MCP tools are available?
+   ```
+
+3. Test a simple command:
+   ```
+   Take a snapshot of my desktop
+   ```
+
+## Configuration File Location
+
+The Gemini CLI settings file is located at:
+
+```
+%USERPROFILE%\.gemini\settings.json
+```
+
+Full path example:
+```
+C:\Users\YourUsername\.gemini\settings.json
+```
+
+## Additional Resources
+
+- [Gemini CLI Documentation](https://github.com/google/gemini-cli)
+- [Windows-MCP GitHub Repository](https://github.com/CursorTouch/Windows-MCP)
+- [Community Discord](https://discord.com/invite/Aue9Yj2VzS)

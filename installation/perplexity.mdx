@@ -1,0 +1,206 @@
+---
+title: 'Perplexity Desktop'
+description: 'Install Windows-MCP on Perplexity Desktop'
+---
+
+## Prerequisites
+
+- [Perplexity Desktop](https://apps.microsoft.com/detail/xp8jnqfbqh6pvf) installed from Microsoft Store
+- UV package manager installed (`pip install uv`)
+- Python 3.13+
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install Perplexity Desktop">
+    Download and install [Perplexity Desktop](https://apps.microsoft.com/detail/xp8jnqfbqh6pvf) from the Microsoft Store.
+  </Step>
+
+  <Step title="Clone Windows-MCP (Optional for Source Install)">
+    If installing from source:
+    ```bash
+    git clone https://github.com/CursorTouch/Windows-MCP.git
+    cd Windows-MCP
+    ```
+  </Step>
+
+  <Step title="Open Perplexity Settings">
+    1. Launch Perplexity Desktop
+    2. Navigate to **Settings** → **Connectors**
+    3. Click **Add Connector** → **Advanced**
+  </Step>
+
+  <Step title="Configure Windows-MCP">
+    Enter the name as `Windows-MCP`, then paste the appropriate JSON configuration:
+
+    <Tabs>
+      <Tab title="PyPI (Recommended)">
+        ```json
+        {
+          "command": "uvx",
+          "args": [
+            "windows-mcp"
+          ]
+        }
+        ```
+      </Tab>
+
+      <Tab title="From Source">
+        ```json
+        {
+          "command": "uv",
+          "args": [
+            "--directory",
+            "<path to the windows-mcp directory>",
+            "run",
+            "windows-mcp"
+          ]
+        }
+        ```
+
+        Replace `<path to the windows-mcp directory>` with the full path where you cloned the repository.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Save and Verify">
+    1. Click **Save**
+    2. Verify that Windows-MCP appears in your connectors list
+    3. Test the connection by asking Perplexity to use Windows automation tools
+  </Step>
+</Steps>
+
+## Configuration Examples
+
+### Basic Configuration
+
+The simplest PyPI-based setup:
+
+```json
+{
+  "command": "uvx",
+  "args": [
+    "windows-mcp"
+  ]
+}
+```
+
+### Source Installation with Custom Path
+
+```json
+{
+  "command": "uv",
+  "args": [
+    "--directory",
+    "C:\\Users\\YourUsername\\Documents\\Windows-MCP",
+    "run",
+    "windows-mcp"
+  ]
+}
+```
+
+### With Telemetry Disabled
+
+```json
+{
+  "command": "uvx",
+  "args": [
+    "windows-mcp"
+  ],
+  "env": {
+    "ANONYMIZED_TELEMETRY": "false"
+  }
+}
+```
+
+### Remote Mode Configuration
+
+For connecting to remote Windows VMs:
+
+```json
+{
+  "command": "uvx",
+  "args": [
+    "windows-mcp"
+  ],
+  "env": {
+    "MODE": "remote",
+    "SANDBOX_ID": "your-sandbox-id",
+    "API_KEY": "your-api-key"
+  }
+}
+```
+
+## Troubleshooting
+
+### Connector Won't Start
+
+<Note>
+On first installation, dependency installation may take 1-2 minutes. If the connector times out, try disconnecting and reconnecting it.
+</Note>
+
+**Common causes**:
+- UV not installed or not in PATH
+- Incorrect path to Windows-MCP directory
+- JSON syntax errors (check for missing commas or quotes)
+
+**Solutions**:
+1. Verify UV is installed: `uv --version`
+2. Double-check the directory path (use forward slashes or escaped backslashes)
+3. Validate JSON syntax using an online JSON validator
+
+### Path Resolution Issues
+
+If Perplexity cannot find `uvx`:
+
+1. Find the full path to `uv.exe`:
+   ```bash
+   where uv
+   ```
+
+2. Use the absolute path in configuration:
+   ```json
+   {
+     "command": "C:\\Users\\YourUsername\\.local\\bin\\uv.exe",
+     "args": ["run", "windows-mcp"]
+   }
+   ```
+
+### Tools Not Available
+
+If Windows-MCP tools don't appear:
+
+1. Check Perplexity logs for error messages
+2. Verify the connector shows as "Connected" in Settings
+3. Try removing and re-adding the connector
+4. Restart Perplexity Desktop
+
+### Permission Errors
+
+<Warning>
+Windows-MCP runs with the same permissions as the user running Perplexity. Avoid running Perplexity as Administrator unless necessary.
+</Warning>
+
+If you encounter permission issues:
+- Run Perplexity Desktop with standard user permissions
+- Check Windows UAC settings
+- Verify file/folder access permissions
+
+## Checking Logs
+
+To view Perplexity MCP logs:
+
+1. Go to Settings → Connectors
+2. Find Windows-MCP in the list
+3. Click to view connection status and recent logs
+
+Logs will show:
+- Connection status
+- Tool execution attempts
+- Error messages and stack traces
+
+## Additional Resources
+
+- [Perplexity MCP Support Documentation](https://www.perplexity.ai/help-center/en/articles/11502712-local-and-remote-mcps-for-perplexity)
+- [Windows-MCP GitHub Repository](https://github.com/CursorTouch/Windows-MCP)
+- [Community Discord](https://discord.com/invite/Aue9Yj2VzS)

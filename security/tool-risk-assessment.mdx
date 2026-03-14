@@ -1,0 +1,663 @@
+---
+title: Tool Risk Assessment
+description: Security risk levels and implications for each Windows-MCP tool
+---
+
+## Tool Security Profile
+
+Each Windows-MCP tool has a different security risk profile based on its capabilities and potential impact on the system. Understanding these risk levels is crucial for safe deployment and usage.
+
+<Warning>
+  All tools execute with the same permissions as the user running the MCP server. Even "low-risk" tools can be dangerous if the user has elevated privileges.
+</Warning>
+
+## High-Risk Tools (Potentially Destructive)
+
+<Warning>
+  These tools can make **permanent, irreversible changes** to your system. Use with extreme caution.
+</Warning>
+
+High-risk tools are marked with `destructiveHint: true` in their tool annotations.
+
+<CardGroup cols={2}>
+  <Card title="Shell" icon="terminal">
+    **Risk Level: CRITICAL**
+    
+    Can execute arbitrary PowerShell commands
+  </Card>
+  <Card title="Click" icon="hand-pointer">
+    **Risk Level: HIGH**
+    
+    Can trigger destructive UI actions
+  </Card>
+  <Card title="Type" icon="keyboard">
+    **Risk Level: HIGH**
+    
+    Can overwrite data when `clear=True`
+  </Card>
+  <Card title="Drag" icon="arrows-alt">
+    **Risk Level: HIGH**
+    
+    Can move/reorganize files and overwrite existing files
+  </Card>
+  <Card title="Shortcut" icon="bolt">
+    **Risk Level: HIGH**
+    
+    Can execute destructive keyboard shortcuts
+  </Card>
+  <Card title="Clipboard" icon="clipboard">
+    **Risk Level: MEDIUM**
+    
+    Can modify clipboard contents and paste destructive data
+  </Card>
+</CardGroup>
+
+### Shell - CRITICAL RISK
+
+**Capabilities:**
+- Execute arbitrary PowerShell commands
+- System modifications (registry, services, configurations)
+- File operations (delete, move, modify)
+- Network operations
+- Process management
+
+**Security Implications:**
+
+```powershell
+# DANGEROUS: Can permanently delete files
+Remove-Item -Path "C:\ImportantData" -Recurse -Force
+
+# DANGEROUS: Can modify system registry
+Set-ItemProperty -Path "HKLM:\SOFTWARE\..." -Name "Value" -Value "Malicious"
+
+# DANGEROUS: Can disable security features
+Set-MpPreference -DisableRealtimeMonitoring $true
+```
+
+**Mitigation:**
+- Disable the Shell tool entirely in high-security environments
+- Run under a restricted user account with minimal permissions
+- Implement command filtering or whitelisting
+- Use PowerShell execution policies to restrict script execution
+- Monitor all Shell tool usage with comprehensive logging
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: true
+idempotentHint: false
+openWorldHint: true
+```
+
+### Click - HIGH RISK
+
+**Capabilities:**
+- Click any UI element at specified coordinates or by name
+- Trigger confirmation dialogs ("Delete", "Yes", "OK")
+- Activate buttons, links, and controls
+- Support for left, right, and middle mouse buttons
+- Double-click and drag operations
+
+**Security Implications:**
+
+- Can click "Delete" buttons in file explorers
+- Can confirm destructive actions in system dialogs
+- Can trigger "Yes" on UAC prompts if running with admin privileges
+- Can activate "Format Drive" or "Reset PC" buttons
+- Can close critical applications via "X" buttons
+
+**Example Dangerous Scenarios:**
+```python
+# Can accidentally delete files
+click(element="Delete", button="left")
+
+# Can confirm destructive actions
+click(element="Yes, I'm sure", button="left")
+
+# Can close unsaved work
+click(x=1900, y=10, button="left")  # Close button
+```
+
+**Mitigation:**
+- Implement confirmation prompts before clicking destructive elements
+- Use element name matching carefully (avoid fuzzy matching for critical actions)
+- Monitor click operations in real-time
+- Disable click functionality for specific UI element patterns
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: true
+idempotentHint: false
+openWorldHint: false
+```
+
+### Type - HIGH RISK
+
+**Capabilities:**
+- Type text into active input fields
+- Clear existing text when `clear=True`
+- Simulate keyboard input
+- Enter text into forms, editors, and terminals
+
+**Security Implications:**
+
+- Can overwrite existing text/data when `clear=True` is used
+- Can enter destructive commands into terminals
+- Can modify configuration files in text editors
+- Can fill out forms with incorrect or malicious data
+- No recovery option for overwritten text
+
+**Example Dangerous Scenarios:**
+```python
+# Overwrites existing document content
+type(text="New content", clear=True)
+
+# Types destructive command in terminal
+type(text="rm -rf /", clear=False)
+
+# Modifies configuration with incorrect values
+type(text="allow_all_connections=true", clear=True)
+```
+
+**Mitigation:**
+- Always use `clear=False` unless absolutely necessary
+- Implement backup/undo mechanisms before typing operations
+- Validate input text before typing
+- Monitor typing operations in sensitive applications
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: true  # When clear=True
+idempotentHint: false
+openWorldHint: false
+```
+
+### Drag - HIGH RISK
+
+**Capabilities:**
+- Drag and drop UI elements
+- Move files and folders in file explorer
+- Reorganize UI components
+- Support for custom drag paths
+
+**Security Implications:**
+
+- Can move files to different locations (potentially overwriting)
+- Can reorganize critical system files if running with privileges
+- Can drag items to Recycle Bin for deletion
+- Can move files out of secure locations
+
+**Example Dangerous Scenarios:**
+```python
+# Can move important files
+drag(start_x=100, start_y=100, end_x=500, end_y=500)
+
+# Can drag files to Recycle Bin
+drag(element="ImportantFile.txt", target="Recycle Bin")
+```
+
+**Mitigation:**
+- Restrict drag operations to specific coordinate ranges
+- Implement file location whitelisting
+- Monitor file system changes during drag operations
+- Require confirmation for file moves
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: true
+idempotentHint: false
+openWorldHint: false
+```
+
+### Shortcut - HIGH RISK
+
+**Capabilities:**
+- Execute keyboard shortcuts (Ctrl, Alt, Shift combinations)
+- Trigger application-specific shortcuts
+- System-level shortcuts (Alt+F4, Windows key combinations)
+
+**Security Implications:**
+
+- **Ctrl+D**: Delete in many applications
+- **Alt+F4**: Close active window (can close unsaved work)
+- **Ctrl+Shift+Delete**: Clear browsing data
+- **Windows+L**: Lock the screen (can interrupt automation)
+- **Ctrl+A, Delete**: Select all and delete
+
+**Example Dangerous Scenarios:**
+```python
+# Closes active window
+shortcut(keys=["alt", "F4"])
+
+# Deletes selected items
+shortcut(keys=["ctrl", "D"])
+
+# Selects all and deletes
+shortcut(keys=["ctrl", "A"])
+shortcut(keys=["delete"])
+```
+
+**Mitigation:**
+- Maintain a blacklist of dangerous shortcuts
+- Require confirmation for destructive shortcuts
+- Monitor shortcut usage patterns
+- Disable shortcut tool in high-risk environments
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: true
+idempotentHint: false
+openWorldHint: false
+```
+
+### Clipboard - MEDIUM RISK
+
+**Capabilities:**
+- Read current clipboard contents
+- Write new content to clipboard
+- Support for text and image data
+
+**Security Implications:**
+
+- Can overwrite important clipboard data (passwords, sensitive info)
+- Can read sensitive information from clipboard
+- Can paste malicious content if combined with Ctrl+V shortcut
+- May capture credentials or personal data
+
+**Mitigation:**
+- Monitor clipboard access patterns
+- Implement clipboard content filtering
+- Clear clipboard after sensitive operations
+- Log clipboard read/write operations
+
+**Tool Annotations:**
+```python
+readOnlyHint: false  # Can write to clipboard
+destructiveHint: false
+idempotentHint: true  # Reading is idempotent
+openWorldHint: false
+```
+
+## Medium-Risk Tools (Modifying but Non-Destructive)
+
+<CardGroup cols={2}>
+  <Card title="App" icon="window-maximize">
+    **Risk Level: MEDIUM**
+    
+    Launches and manages applications
+  </Card>
+  <Card title="Process" icon="microchip">
+    **Risk Level: MEDIUM**
+    
+    Manages running processes
+  </Card>
+  <Card title="Notification" icon="bell">
+    **Risk Level: LOW**
+    
+    Sends system notifications
+  </Card>
+</CardGroup>
+
+### App - MEDIUM RISK
+
+**Capabilities:**
+- Launch applications by name or path
+- Close running applications
+- Switch between windows
+- Resize and position windows
+- Manage application state
+
+**Security Implications:**
+
+- Can launch potentially malicious applications
+- Can close critical applications (antivirus, firewalls)
+- Can open applications with elevated privileges if available
+- Resource consumption from launching many applications
+
+**Example Scenarios:**
+```python
+# Can launch any application
+app(action="open", name="cmd.exe")
+
+# Can close critical applications
+app(action="close", name="Windows Defender")
+```
+
+**Mitigation:**
+- Maintain a whitelist of allowed applications
+- Prevent closing of critical system applications
+- Monitor application launch patterns
+- Limit resource consumption
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: false
+idempotentHint: false
+openWorldHint: false
+```
+
+### Process - MEDIUM RISK
+
+**Capabilities:**
+- List running processes
+- Terminate processes by name or PID
+- Monitor process resource usage
+
+**Security Implications:**
+
+- Can terminate critical system processes
+- Can kill antivirus or security software
+- Can disrupt running applications
+- May cause data loss if applications are killed without saving
+
+**Mitigation:**
+- Protect critical system processes from termination
+- Require confirmation before killing processes
+- Log all process termination operations
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: false
+idempotentHint: false
+openWorldHint: false
+```
+
+### Notification - LOW RISK
+
+**Capabilities:**
+- Display system notifications
+- Show toast messages
+- Alert the user
+
+**Security Implications:**
+
+- Can spam the user with notifications
+- Can be used for social engineering attacks
+- Can impersonate system or application notifications
+- Minor annoyance/distraction
+
+**Mitigation:**
+- Rate-limit notification frequency
+- Validate notification content
+- Clearly identify MCP-generated notifications
+
+**Tool Annotations:**
+```python
+readOnlyHint: false
+destructiveHint: false
+idempotentHint: true
+openWorldHint: false
+```
+
+## Low-Risk Tools (Read-Only or Safe)
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera">
+    **Risk Level: LOW***
+    
+    Captures desktop state and screenshots
+  </Card>
+  <Card title="Wait" icon="clock">
+    **Risk Level: SAFE**
+    
+    Pauses execution
+  </Card>
+  <Card title="Scrape" icon="globe">
+    **Risk Level: LOW***
+    
+    Fetches web content
+  </Card>
+  <Card title="Scroll" icon="arrows-up-down">
+    **Risk Level: SAFE**
+    
+    Changes viewport position
+  </Card>
+  <Card title="Move" icon="mouse-pointer">
+    **Risk Level: SAFE**
+    
+    Positions mouse cursor
+  </Card>
+</CardGroup>
+
+<Warning>
+  ***Even "low-risk" tools can have privacy implications. See details below.**
+</Warning>
+
+### Snapshot - LOW RISK (Privacy Concerns)
+
+**Capabilities:**
+- Capture screenshots of desktop
+- Extract UI element tree
+- Detect active applications
+- Identify interactive elements
+- Special browser DOM extraction for Chrome, Edge, Firefox
+
+**Security Implications:**
+
+- **Privacy Risk**: Can capture sensitive information displayed on screen
+- **Data Exposure**: Screenshots may contain passwords, personal data, financial information
+- **Credentials**: Can capture visible credentials or API keys
+- **Compliance**: May violate privacy regulations (GDPR, HIPAA)
+
+**Example Privacy Risks:**
+- Capturing banking information on screen
+- Screenshotting medical records
+- Exposing personal emails or messages
+- Revealing proprietary business information
+
+**Mitigation:**
+- Disable vision/screenshot functionality with `use_vision=False`
+- Clear sensitive information before taking snapshots
+- Implement screenshot content filtering
+- Use only in non-sensitive environments
+- Disable telemetry (`ANONYMIZED_TELEMETRY=false`)
+
+**Tool Annotations:**
+```python
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: true
+openWorldHint: false
+```
+
+### Wait - SAFE
+
+**Capabilities:**
+- Pause execution for specified duration
+- Allow UI to settle before next action
+- Rate-limiting and timing control
+
+**Security Implications:**
+
+- **None**: This tool is completely safe
+- Only delays execution, makes no system changes
+
+**Tool Annotations:**
+```python
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: true
+openWorldHint: false
+```
+
+### Scrape - LOW RISK (Privacy and Network Concerns)
+
+**Capabilities:**
+- Fetch web page content
+- Download HTML, JSON, or text
+- Access external URLs
+- HTTP GET requests
+
+**Security Implications:**
+
+- **Privacy Risk**: Exposes browsing activity to target websites
+- **Network Risk**: Can access malicious websites
+- **Data Exfiltration**: Could be used to send data to external servers
+- **SSRF**: Can access internal network resources if not properly restricted
+
+**Example Risks:**
+```python
+# Can access malicious sites
+scrape(url="http://malicious-site.com")
+
+# Can access internal resources
+scrape(url="http://192.168.1.1/admin")
+
+# Can expose browsing patterns
+scrape(url="http://competitor-site.com/research")
+```
+
+**Mitigation:**
+- Implement URL whitelisting
+- Block access to internal IP ranges
+- Monitor outbound network requests
+- Use network isolation for the MCP server
+- Implement rate limiting
+
+**Tool Annotations:**
+```python
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: true
+openWorldHint: true  # Interacts with external websites
+```
+
+### Scroll - SAFE
+
+**Capabilities:**
+- Scroll windows or UI elements
+- Change viewport position
+- Navigate long content
+
+**Security Implications:**
+
+- **None**: Only changes viewport, makes no destructive changes
+- Completely safe to use
+
+**Tool Annotations:**
+```python
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: false  # Scrolling changes state
+openWorldHint: false
+```
+
+### Move - SAFE
+
+**Capabilities:**
+- Position mouse cursor
+- Navigate to specific screen coordinates
+- Prepare for click operations
+
+**Security Implications:**
+
+- **None**: Only moves cursor, makes no changes
+- Completely safe in isolation
+- Can be chained with Click for destructive operations
+
+**Tool Annotations:**
+```python
+readOnlyHint: true
+destructiveHint: false
+idempotentHint: true
+openWorldHint: false
+```
+
+## Multi-Action Tools
+
+<CardGroup cols={1}>
+  <Card title="MultiSelect & MultiEdit" icon="list-check">
+    **Risk Level: HIGH**
+    
+    Batch operations can amplify risks
+  </Card>
+</CardGroup>
+
+### MultiSelect and MultiEdit - HIGH RISK
+
+**Capabilities:**
+- Perform batch operations on multiple UI elements
+- Select multiple items simultaneously
+- Apply edits to multiple targets
+
+**Security Implications:**
+
+- **Amplified Risk**: Mistakes affect multiple items at once
+- Can select and delete multiple files simultaneously
+- Can modify multiple configuration entries
+- Difficult to undo batch operations
+
+**Mitigation:**
+- Implement extra confirmation for multi-actions
+- Limit batch operation size
+- Require explicit user approval
+- Log all batch operations comprehensively
+
+## Tool Combinations and Chaining Risks
+
+<Warning>
+  Tool combinations can create risks greater than individual tools
+</Warning>
+
+### Dangerous Tool Chains:
+
+1. **Move + Click**: Navigate to and click destructive buttons
+2. **Type + Shortcut (Enter)**: Type command and execute immediately
+3. **Click + Click**: Double-confirm destructive actions
+4. **Snapshot + Scrape**: Exfiltrate screen data to external servers
+5. **Clipboard + Type**: Paste malicious content into applications
+
+### Example Dangerous Chain:
+
+```python
+# Chain 1: Delete file workflow
+snapshot()  # Identify file location
+click(element="ImportantFile.txt")  # Select file
+shortcut(keys=["delete"])  # Press delete
+click(element="Yes")  # Confirm deletion
+
+# Chain 2: Malicious command execution
+app(action="open", name="PowerShell")  # Open PowerShell
+wait(seconds=2)  # Wait for window
+type(text="Remove-Item -Recurse C:\\Data", clear=False)  # Type command
+shortcut(keys=["enter"])  # Execute command
+```
+
+## Summary Risk Matrix
+
+| Tool | Risk Level | Destructive | Read-Only | Open World | Mitigation Priority |
+|------|-----------|-------------|-----------|------------|--------------------|
+| **Shell** | CRITICAL | Yes | No | Yes | HIGHEST |
+| **Click** | HIGH | Yes | No | No | HIGH |
+| **Type** | HIGH | Yes* | No | No | HIGH |
+| **Drag** | HIGH | Yes | No | No | HIGH |
+| **Shortcut** | HIGH | Yes | No | No | HIGH |
+| **MultiSelect/Edit** | HIGH | Yes | No | No | HIGH |
+| **App** | MEDIUM | No | No | No | MEDIUM |
+| **Process** | MEDIUM | No | No | No | MEDIUM |
+| **Clipboard** | MEDIUM | No | No | No | MEDIUM |
+| **Snapshot** | LOW | No | Yes | No | LOW (Privacy) |
+| **Scrape** | LOW | No | Yes | Yes | LOW (Network) |
+| **Notification** | LOW | No | No | No | LOW |
+| **Scroll** | SAFE | No | Yes | No | MINIMAL |
+| **Move** | SAFE | No | Yes | No | MINIMAL |
+| **Wait** | SAFE | No | Yes | No | MINIMAL |
+
+*Type is destructive when `clear=True`
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Deployment Best Practices" icon="shield-check" href="/security/deployment-best-practices">
+    Learn how to safely deploy Windows-MCP
+  </Card>
+  <Card title="Security Overview" icon="shield" href="/security/overview">
+    Review overall security considerations
+  </Card>
+</CardGroup>

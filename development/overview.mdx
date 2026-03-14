@@ -1,0 +1,126 @@
+---
+title: Development Overview
+description: Introduction to Windows-MCP development and contribution guidelines
+---
+
+Thank you for your interest in contributing to Windows-MCP! We welcome contributions from the community to help make this project better. This guide will help you get started with development.
+
+## What is Windows-MCP?
+
+Windows-MCP is a Python MCP (Model Context Protocol) server that bridges AI LLM agents with the Windows OS, enabling direct desktop automation. It exposes 15 tools via FastMCP:
+
+- **App, Shell, Process**: Application and process management
+- **Snapshot**: Screen capture and UI tree extraction
+- **Click, Type, Scroll, Move**: Mouse and keyboard automation
+- **Shortcut, Wait**: Keyboard shortcuts and timing control
+- **Scrape**: Extract accessible text from UI elements
+- **MultiSelect, MultiEdit**: Batch operations on UI elements
+- **Clipboard, Notification**: System interactions
+
+## Architecture Overview
+
+The codebase follows a layered service architecture under `src/windows_mcp/`:
+
+<CardGroup cols={2}>
+  <Card title="Entry Point" icon="door-open">
+    `__main__.py` registers all 15 MCP tools on a FastMCP server instance. Uses async lifespan to initialize Desktop, WatchDog, and Analytics services.
+  </Card>
+  
+  <Card title="Desktop Service" icon="desktop">
+    `desktop/service.py` is the high-level orchestrator managing window operations, screenshots, mouse/keyboard actions, and clipboard.
+  </Card>
+  
+  <Card title="Tree Service" icon="sitemap">
+    `tree/service.py` captures the Windows accessibility tree from active and background windows using multi-threaded UI traversal.
+  </Card>
+  
+  <Card title="UIAutomation Wrapper" icon="window-maximize">
+    `uia/` provides low-level abstraction over Windows UIAutomation COM API via `comtypes`.
+  </Card>
+</CardGroup>
+
+### Additional Components
+
+- **WatchDog** (`watchdog/service.py`): Runs in a separate thread monitoring UI focus changes
+- **Virtual Desktop Manager** (`vdm/core.py`): Tracks windows across Windows virtual desktops
+- **Analytics** (`analytics.py`): Optional PostHog telemetry (disabled with `ANONYMIZED_TELEMETRY=false`)
+
+## Types of Contributions
+
+We welcome many types of contributions:
+
+### Code Contributions
+
+- **New Tools**: Add new MCP tools for Windows automation
+- **Bug Fixes**: Fix issues in existing tools
+- **Performance Improvements**: Optimize code for speed or efficiency
+- **Refactoring**: Improve code structure and maintainability
+
+### Non-Code Contributions
+
+- **Documentation**: Improve README, guides, or docstrings
+- **Testing**: Add test cases or improve test coverage
+- **Bug Reports**: Report issues with detailed information
+- **Feature Requests**: Suggest new features or improvements
+- **Community Support**: Help others in Discord or Discussions
+
+## Code of Conduct
+
+By participating in this project, you agree to maintain a respectful and inclusive environment. We expect all contributors to:
+
+- Be respectful and considerate in communication
+- Welcome newcomers and help them get started
+- Accept constructive criticism gracefully
+- Focus on what's best for the community and project
+
+## Security Context
+
+<Warning>
+  This server has **full system access** with no sandboxing. Tools like Shell and App can perform irreversible operations. The recommended deployment target is a VM or Windows Sandbox.
+</Warning>
+
+## Getting Help
+
+Need help with your contribution?
+
+<CardGroup cols={2}>
+  <Card title="Discord" icon="discord" href="https://discord.com/invite/Aue9Yj2VzS">
+    Join our Discord Community for real-time support
+  </Card>
+  
+  <Card title="GitHub Discussions" icon="github" href="https://github.com/CursorTouch/Windows-MCP/discussions">
+    Ask questions in GitHub Discussions
+  </Card>
+  
+  <Card title="Twitter/X" icon="twitter" href="https://x.com/CursorTouch">
+    Follow @CursorTouch for updates
+  </Card>
+  
+  <Card title="Issues" icon="bug" href="https://github.com/CursorTouch/Windows-MCP/issues">
+    Open an issue for technical questions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Setup" icon="wrench" href="/development/setup">
+    Set up your development environment
+  </Card>
+  
+  <Card title="Code Style" icon="code" href="/development/code-style">
+    Learn about our code style guidelines
+  </Card>
+  
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Understand our testing procedures
+  </Card>
+  
+  <Card title="Pull Requests" icon="code-pull-request" href="/development/setup#pull-request-process">
+    Submit your first pull request
+  </Card>
+</CardGroup>
+
+## License
+
+By contributing to Windows-MCP, you agree that your contributions will be licensed under the [MIT License](https://github.com/CursorTouch/Windows-MCP/blob/main/LICENSE.md).

@@ -1,0 +1,132 @@
+---
+title: 'Installation Overview'
+description: 'Get started with Windows-MCP on your preferred AI platform'
+---
+
+<Note>
+When you install Windows-MCP for the first time, it may take a minute or two to install dependencies. In the first run, the server may timeout - ignore it and restart.
+</Note>
+
+## Prerequisites
+
+Before installing Windows-MCP, ensure you have:
+
+- **Python 3.13+** installed on your Windows system
+- **UV (Package Manager)** from Astral
+- **English** as the default language in Windows (preferred, or disable the `App-Tool` for other languages)
+
+### Installing UV
+
+You can install UV using either of these methods:
+
+<CodeGroup>
+
+```bash pip
+pip install uv
+```
+
+```bash curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+</CodeGroup>
+
+## Supported Operating Systems
+
+Windows-MCP works on all modern Windows versions:
+
+- Windows 7
+- Windows 8, 8.1
+- Windows 10
+- Windows 11
+
+## Installation Methods
+
+Windows-MCP can be installed in two ways:
+
+<CardGroup cols={2}>
+  <Card title="PyPI (Recommended)" icon="python" href="#pypi-installation">
+    Install directly from PyPI using `uvx windows-mcp`
+  </Card>
+  <Card title="From Source" icon="code" href="#source-installation">
+    Clone the repository and run from source code
+  </Card>
+</CardGroup>
+
+### PyPI Installation
+
+The easiest way to install Windows-MCP is using `uvx` to run the latest version directly from PyPI:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Source Installation
+
+For development or customization, you can install from source:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/CursorTouch/Windows-MCP.git
+    cd Windows-MCP
+    ```
+  </Step>
+  <Step title="Configure your MCP client">
+    ```json
+    {
+      "mcpServers": {
+        "windows-mcp": {
+          "command": "uv",
+          "args": [
+            "--directory",
+            "<path to the windows-mcp directory>",
+            "run",
+            "windows-mcp"
+          ]
+        }
+      }
+    }
+    ```
+  </Step>
+</Steps>
+
+## Supported MCP Clients
+
+Windows-MCP works with multiple AI platforms:
+
+<CardGroup cols={2}>
+  <Card title="Claude Desktop" icon="message" href="/installation/claude-desktop">
+    Install on Anthropic's Claude Desktop application
+  </Card>
+  <Card title="Perplexity Desktop" icon="magnifying-glass" href="/installation/perplexity">
+    Connect with Perplexity Desktop client
+  </Card>
+  <Card title="Gemini CLI" icon="terminal" href="/installation/gemini-cli">
+    Use with Google's Gemini command-line interface
+  </Card>
+  <Card title="Qwen Code" icon="code" href="/installation/qwen-code">
+    Integrate with Qwen Code CLI
+  </Card>
+  <Card title="Codex CLI" icon="robot" href="/installation/codex-cli">
+    Set up with OpenAI's Codex CLI
+  </Card>
+</CardGroup>
+
+## What's Next?
+
+After installation, you can:
+
+- Explore the [available MCP tools](/tools/overview) Windows-MCP provides
+- Learn about [operating modes](/configuration/modes) (Local vs Remote)
+- Review [security considerations](/security/overview) before deployment
+- Check out [troubleshooting tips](/installation/claude-desktop#troubleshooting) if you encounter issues

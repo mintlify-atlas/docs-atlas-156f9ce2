@@ -1,0 +1,313 @@
+---
+title: 'Notification'
+description: 'Send Windows toast notifications to alert users'
+icon: 'bell'
+---
+
+## Overview
+
+The Notification tool sends Windows toast notifications to alert users with a title and message. This is useful for remote operations, task completion alerts, or drawing user attention to important events.
+
+## Function Signature
+
+```python
+def notification_tool(
+    title: str,
+    message: str,
+    ctx: Context = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="title" type="string" required>
+  The notification title. Displayed in bold at the top of the toast.
+  
+  **Best practices:**
+  - Keep it short and clear (max ~50 characters)
+  - Summarize the notification purpose
+  - Use title case or sentence case
+  
+  **Examples:** `"Task Completed"`, `"Download Ready"`, `"System Alert"`
+</ParamField>
+
+<ParamField path="message" type="string" required>
+  The notification message body. Displayed below the title.
+  
+  **Best practices:**
+  - Provide context or details (max ~200 characters recommended)
+  - Use clear, actionable language
+  - Include relevant information (file name, status, next steps)
+  
+  **Examples:** `"Your document has been saved to Downloads"`, `"3 files processed successfully"`
+</ParamField>
+
+## Return Value
+
+Returns a confirmation string from the desktop service, typically:
+```
+Notification sent successfully
+```
+
+Or an error message if the notification failed:
+```
+Error sending notification: [error details]
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Basic Notification
+# Send a simple notification
+result = notification_tool(
+    title="Task Completed",
+    message="Your file has been processed successfully"
+)
+```
+
+```python Process Completion Alert
+# Notify user when a long-running task finishes
+result = notification_tool(
+    title="Backup Complete",
+    message="Successfully backed up 1,234 files to external drive"
+)
+```
+
+```python Error Alert
+# Alert user about an error condition
+result = notification_tool(
+    title="Operation Failed",
+    message="Could not connect to server. Please check your network connection."
+)
+```
+
+```python Download Ready
+# Notify when a download is complete
+result = notification_tool(
+    title="Download Ready",
+    message="report_Q1_2024.pdf is ready in your Downloads folder"
+)
+```
+
+```python Reminder Notification
+# Send a reminder to the user
+result = notification_tool(
+    title="Meeting Reminder",
+    message="Your meeting starts in 15 minutes"
+)
+```
+
+</CodeGroup>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+
+<Card title="Remote Task Alerts" icon="satellite-dish">
+  Notify users when automated tasks complete on remote machines
+</Card>
+
+<Card title="Process Monitoring" icon="chart-line">
+  Alert when long-running processes finish or encounter errors
+</Card>
+
+<Card title="File Operations" icon="file-arrow-down">
+  Inform users about completed downloads, uploads, or file processing
+</Card>
+
+<Card title="System Events" icon="bell">
+  Notify about important system events, warnings, or required actions
+</Card>
+
+</CardGroup>
+
+## Notification Behavior
+
+<AccordionGroup>
+
+<Accordion title="Display Duration">
+  Windows toast notifications typically:
+  - Display for ~5-10 seconds by default
+  - Can be dismissed by clicking the X button
+  - Remain in Action Center (Windows 10/11) after dismissal
+  - Auto-dismiss if user doesn't interact
+</Accordion>
+
+<Accordion title="User Focus">
+  Notifications appear:
+  - In the bottom-right corner (default Windows position)
+  - Even when user is working in other applications
+  - Above most windows but below full-screen applications
+  - In the Action Center for later review
+</Accordion>
+
+<Accordion title="Sound and Priority">
+  - Standard notifications play the system notification sound
+  - Volume follows Windows notification settings
+  - Priority cannot be customized (always standard toast)
+</Accordion>
+
+</AccordionGroup>
+
+## Best Practices
+
+1. **Use clear, actionable language**
+   ```python
+   # ✅ Good: Clear and specific
+   notification_tool(
+       title="Export Complete",
+       message="5 reports exported to C:\\Reports\\2024"
+   )
+   
+   # ❌ Bad: Vague and unhelpful
+   notification_tool(
+       title="Done",
+       message="The thing finished"
+   )
+   ```
+
+2. **Keep it concise**
+   ```python
+   # ✅ Good: Brief and informative
+   notification_tool(
+       title="Scan Complete",
+       message="Found 3 issues. Check log for details."
+   )
+   
+   # ❌ Bad: Too long
+   notification_tool(
+       title="Scan Complete",
+       message="The system scan has finished running and found 3 issues that you should review by checking the log file located at..."
+   )
+   ```
+
+3. **Match tone to urgency**
+   ```python
+   # Critical issues
+   notification_tool(
+       title="⚠️ Critical Error",
+       message="Database connection lost. Immediate action required."
+   )
+   
+   # Routine updates
+   notification_tool(
+       title="Update Available",
+       message="A new version is ready to install"
+   )
+   ```
+
+4. **Include next steps when appropriate**
+   ```python
+   notification_tool(
+       title="Approval Required",
+       message="Review and approve 3 pending requests in the admin panel"
+   )
+   ```
+
+## Workflow Examples
+
+<CodeGroup>
+
+```python Long-running Task
+# Notify user when a long process completes
+
+# Start task
+powershell_tool(
+    command="Start-Process -FilePath 'backup.exe' -Wait",
+    timeout=3600
+)
+
+# Notify completion
+notification_tool(
+    title="Backup Complete",
+    message="System backup finished successfully at " + current_time
+)
+```
+
+```python Error Handling
+# Notify on error during automation
+
+try:
+    # Attempt operation
+    file_system_tool(mode="copy", path="source.txt", destination="dest.txt")
+    
+    # Success notification
+    notification_tool(
+        title="File Copied",
+        message="source.txt copied to dest.txt"
+    )
+except Exception as e:
+    # Error notification
+    notification_tool(
+        title="Copy Failed",
+        message=f"Error: {str(e)}"
+    )
+```
+
+```python Multi-step Progress
+# Notify after each major step
+
+# Step 1
+download_file()
+notification_tool(title="Step 1/3", message="Download complete")
+
+# Step 2
+process_file()
+notification_tool(title="Step 2/3", message="Processing complete")
+
+# Step 3
+upload_file()
+notification_tool(title="Complete", message="All steps finished")
+```
+
+</CodeGroup>
+
+## When NOT to Use Notifications
+
+❌ **Avoid notifications for:**
+- Every minor action (creates notification spam)
+- Information the user already sees on screen
+- Non-urgent status updates
+- Frequent repetitive events
+
+✅ **Use notifications for:**
+- Background task completion
+- Remote/unattended operations
+- Important alerts or errors
+- Events requiring user attention
+
+## Platform Requirements
+
+- **Windows 10+**: Full toast notification support
+- **Windows 8.1**: Basic toast support
+- **Windows 7**: May not display or fall back to system tray
+
+## Limitations
+
+- **No interactive buttons**: Cannot add action buttons to notifications
+- **No images**: Cannot include custom images or icons
+- **No sound customization**: Uses default system notification sound
+- **No priority levels**: All notifications have standard priority
+- **No scheduling**: Notifications send immediately
+
+## Error Handling
+
+Common errors and solutions:
+
+- **"Error sending notification"**: Windows notification service may be disabled; check Windows settings
+- **Notification doesn't appear**: Check that Focus Assist is not enabled (blocks notifications)
+- **No sound**: Verify notification sounds are enabled in Windows sound settings
+
+## Accessibility Considerations
+
+- **Screen readers**: Windows toast notifications are read by screen readers
+- **High contrast**: Notifications respect Windows high contrast themes
+- **Duration**: Users with disabilities may need more time; notifications remain in Action Center
+
+## Related Tools
+
+- [Wait](/tools/wait) - Pause between notifications to avoid spam
+- [PowerShell](/tools/shell) - Execute commands and notify on completion
+- [Process](/tools/process) - Monitor processes and send alerts
+- [FileSystem](/tools/filesystem) - File operations with completion notifications

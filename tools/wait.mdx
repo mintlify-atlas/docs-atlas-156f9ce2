@@ -1,0 +1,362 @@
+---
+title: 'Wait'
+description: 'Pause execution for a specified duration'
+icon: 'clock'
+---
+
+## Overview
+
+The Wait tool pauses execution for a specified number of seconds. It's essential for ensuring UI elements are ready, allowing animations to complete, or adding delays between rapid actions.
+
+## Function Signature
+
+```python
+def wait_tool(
+    duration: int,
+    ctx: Context = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="duration" type="integer" required>
+  The number of seconds to pause execution.
+  
+  **Minimum:** 1 second  
+  **Typical range:** 1-10 seconds  
+  **Maximum:** No hard limit, but avoid excessive waits
+  
+  **Examples:**
+  - `1` - Quick pause for UI updates
+  - `3` - Application launch or page load
+  - `5` - Network requests or file operations
+  - `10` - Slow system operations
+</ParamField>
+
+## Return Value
+
+Returns a confirmation string:
+```
+Waited for [duration] seconds.
+```
+
+For example:
+```
+Waited for 3 seconds.
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Wait for Application Launch
+# Launch application and wait for it to load
+app_tool(mode="launch", name="notepad")
+wait_tool(duration=2)  # Wait 2 seconds for window to appear
+```
+
+```python Wait for Dialog to Appear
+# Click button that opens dialog, then wait
+click_tool(loc=[500, 300])
+wait_tool(duration=1)  # Wait for dialog animation
+```
+
+```python Wait for Page Load
+# Navigate to URL and wait for content to render
+click_tool(label=15)  # Click link
+wait_tool(duration=3)  # Wait for page to load
+```
+
+```python Wait Between Rapid Actions
+# Type in multiple fields with delays
+type_tool(loc=[100, 200], text="First")
+wait_tool(duration=1)
+type_tool(loc=[100, 250], text="Second")
+wait_tool(duration=1)
+```
+
+```python Wait for File Download
+# Click download and wait for completion
+click_tool(label=20)  # Click download button
+wait_tool(duration=5)  # Wait for download
+```
+
+</CodeGroup>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+
+<Card title="Application Startup" icon="rocket">
+  Wait for applications to launch and windows to become responsive
+</Card>
+
+<Card title="UI Animations" icon="play">
+  Allow transitions, fade-ins, or slide-out animations to complete
+</Card>
+
+<Card title="Page Rendering" icon="browser">
+  Give web pages time to load content after navigation
+</Card>
+
+<Card title="Dialog Readiness" icon="window-maximize">
+  Ensure dialogs, popups, or modals are fully loaded before interaction
+</Card>
+
+</CardGroup>
+
+## When to Use Wait
+
+<AccordionGroup>
+
+<Accordion title="After launching applications">
+  **Why:** Applications need time to initialize and create windows
+  
+  ```python
+  app_tool(mode="launch", name="chrome")
+  wait_tool(duration=3)  # Wait for Chrome to fully load
+  snapshot_tool()  # Now capture the UI
+  ```
+  
+  **Recommended duration:** 2-5 seconds depending on application
+</Accordion>
+
+<Accordion title="After navigation or page transitions">
+  **Why:** Pages need time to render, fetch data, and execute JavaScript
+  
+  ```python
+  click_tool(label=10)  # Click navigation link
+  wait_tool(duration=2)  # Wait for new page to load
+  scrape_tool(url="...", use_dom=True)  # Scrape loaded content
+  ```
+  
+  **Recommended duration:** 2-4 seconds for web pages
+</Accordion>
+
+<Accordion title="After dialogs or popups appear">
+  **Why:** Dialog animations and content loading take time
+  
+  ```python
+  click_tool(loc=[400, 300])  # Open settings dialog
+  wait_tool(duration=1)  # Wait for dialog animation
+  type_tool(label=15, text="config")  # Interact with dialog
+  ```
+  
+  **Recommended duration:** 1-2 seconds for dialogs
+</Accordion>
+
+<Accordion title="Between rapid interactions">
+  **Why:** Give UI time to process each action and update state
+  
+  ```python
+  click_tool(loc=[100, 200])
+  wait_tool(duration=1)  # Prevent actions from overlapping
+  click_tool(loc=[100, 250])
+  ```
+  
+  **Recommended duration:** 0.5-1 seconds between clicks
+</Accordion>
+
+<Accordion title="For file operations">
+  **Why:** Downloads, uploads, or file processing take time
+  
+  ```python
+  click_tool(label=25)  # Click export button
+  wait_tool(duration=5)  # Wait for file generation
+  file_system_tool(mode="read", path="export.csv")  # Read result
+  ```
+  
+  **Recommended duration:** 3-10 seconds depending on file size
+</Accordion>
+
+</AccordionGroup>
+
+## Choosing the Right Duration
+
+| Scenario | Recommended Duration | Reason |
+|----------|---------------------|--------|
+| Fast UI update | 1 second | Button state change, field update |
+| Dialog/Modal | 1-2 seconds | Animation + content load |
+| Application launch | 2-5 seconds | Initialization time varies |
+| Web page load | 2-4 seconds | Network + rendering |
+| File operation | 3-10 seconds | Depends on file size/complexity |
+| Network request | 3-5 seconds | API calls, data fetching |
+
+## Best Practices
+
+1. **Start conservative, reduce if needed**
+   ```python
+   # Start with longer wait
+   wait_tool(duration=5)
+   
+   # If reliable, reduce to minimum needed
+   wait_tool(duration=2)
+   ```
+
+2. **Combine with Snapshot for verification**
+   ```python
+   click_tool(loc=[300, 400])  # Trigger action
+   wait_tool(duration=2)  # Wait for result
+   snapshot_tool()  # Verify expected UI appeared
+   ```
+
+3. **Use after state-changing actions**
+   ```python
+   # Always wait after actions that change UI state
+   shortcut_tool(shortcut="ctrl+s")  # Save
+   wait_tool(duration=1)  # Wait for save confirmation
+   ```
+
+4. **Avoid excessive waits**
+   ```python
+   # ❌ Bad: Unnecessarily long
+   wait_tool(duration=30)
+   
+   # ✅ Good: Just enough time
+   wait_tool(duration=3)
+   ```
+
+5. **Consider network conditions**
+   ```python
+   # For web operations, account for slower connections
+   click_tool(label=20)  # Load remote content
+   wait_tool(duration=5)  # Extra time for network
+   ```
+
+## Workflow Examples
+
+<CodeGroup>
+
+```python Application Automation
+# Complete workflow with appropriate waits
+
+# 1. Launch application
+app_tool(mode="launch", name="excel")
+wait_tool(duration=4)  # Wait for Excel to load
+
+# 2. Open file dialog
+shortcut_tool(shortcut="ctrl+o")
+wait_tool(duration=1)  # Wait for dialog
+
+# 3. Type filename and open
+type_tool(label=10, text="data.xlsx", press_enter=True)
+wait_tool(duration=3)  # Wait for file to load
+
+# 4. Interact with spreadsheet
+click_tool(loc=[200, 300])
+```
+
+```python Form Submission
+# Fill and submit form with verification
+
+# Fill form fields
+multi_edit_tool(labels=[[15, "John"], [18, "Doe"]])
+
+# Submit form
+click_tool(label=25)  # Click Submit
+wait_tool(duration=2)  # Wait for submission
+
+# Verify success
+snapshot_tool()  # Check for success message
+```
+
+```python Web Scraping
+# Navigate and scrape with proper timing
+
+# Navigate to page
+click_tool(label=10)  # Click category link
+wait_tool(duration=3)  # Wait for page load
+
+# Scroll to load content
+scroll_tool(direction="down", wheel_times=5)
+wait_tool(duration=2)  # Wait for lazy-loaded content
+
+# Scrape
+result = scrape_tool(url="...", use_dom=True)
+```
+
+```python Multi-step Process
+# Execute steps with progress tracking
+
+steps = [
+    ("Download", 5),
+    ("Process", 10),
+    ("Upload", 5)
+]
+
+for step_name, duration in steps:
+    trigger_step(step_name)  # Custom function
+    wait_tool(duration=duration)
+    notification_tool(
+        title=f"{step_name} Complete",
+        message=f"Moving to next step"
+    )
+```
+
+</CodeGroup>
+
+## Alternative Strategies
+
+### Instead of fixed waits, consider:
+
+1. **Polling with Snapshot**
+   ```python
+   # Wait until specific element appears
+   for i in range(10):  # Try up to 10 times
+       snapshot_tool()
+       if element_exists(label=30):
+           break
+       wait_tool(duration=1)
+   ```
+
+2. **Dynamic wait based on response**
+   ```python
+   # Check if action completed
+   result = app_tool(mode="launch", name="app")
+   if "failed" in result:
+       wait_tool(duration=5)  # Retry after wait
+   else:
+       wait_tool(duration=2)  # Normal wait
+   ```
+
+## Common Mistakes
+
+❌ **Too short:** UI not ready, actions fail
+```python
+app_tool(mode="launch", name="photoshop")
+wait_tool(duration=1)  # Too short for Photoshop!
+```
+
+❌ **Too long:** Workflow unnecessarily slow
+```python
+click_tool(loc=[100, 200])
+wait_tool(duration=10)  # Excessive for a simple click
+```
+
+❌ **No wait when needed:** Race conditions
+```python
+click_tool(label=15)  # Opens dialog
+type_tool(label=20, text="input")  # May fail if dialog not ready!
+```
+
+✅ **Just right:** Balanced timing
+```python
+app_tool(mode="launch", name="photoshop")
+wait_tool(duration=8)  # Photoshop needs time
+
+click_tool(loc=[100, 200])
+wait_tool(duration=1)  # Simple action, short wait
+```
+
+## Performance Considerations
+
+- **Sequential waits add up**: `wait_tool(5)` × 10 steps = 50 seconds total
+- **Optimize critical paths**: Reduce waits in frequently-run workflows
+- **Balance reliability vs speed**: Slightly longer wait > unreliable automation
+
+## Related Tools
+
+- [Snapshot](/tools/snapshot) - Verify UI state after waiting
+- [App](/tools/app) - Launch applications (typically needs wait after)
+- [Click](/tools/click) - Trigger actions that may need wait time
+- [Notification](/tools/notification) - Alert user after long waits complete

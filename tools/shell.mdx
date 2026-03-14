@@ -1,0 +1,390 @@
+---
+title: 'PowerShell'
+description: 'Execute PowerShell commands and scripts on Windows'
+icon: 'terminal'
+---
+
+## Overview
+
+The **PowerShell** tool provides comprehensive shell command execution with full access to the Windows operating system. It runs commands via PowerShell with UTF-8 encoding and extended PATH resolution.
+
+<Warning>
+This tool has **full system access** and can perform destructive operations. Use with caution, especially with:
+- File deletion (`Remove-Item -Recurse`)
+- Registry modifications
+- Service/process termination
+- System configuration changes
+</Warning>
+
+## Function Signature
+
+```python
+def powershell_tool(
+    command: str,
+    timeout: int = 30
+) -> str
+```
+
+## Parameters
+
+<ParamField path="command" type="string" required>
+  The PowerShell command or script to execute. Supports:
+  - Single commands: `Get-Process | Sort-Object CPU -Descending`
+  - Multi-line scripts: `$x = 1; $y = 2; $x + $y`
+  - Cmdlets: `Get-ChildItem`, `Invoke-WebRequest`, `Set-ItemProperty`
+  - .NET methods: `[System.Environment]::GetEnvironmentVariable('PATH')`
+  - Native executables: `python --version`, `git status`
+</ParamField>
+
+<ParamField path="timeout" type="integer" default="30">
+  Maximum execution time in seconds. If exceeded:
+  - Returns: `"Command execution timed out"` (status code 1)
+  - Process is terminated
+  - Range: 1-300 seconds recommended
+</ParamField>
+
+## Execution Environment
+
+### PowerShell Version
+
+Automatically selects the best available PowerShell:
+
+1. **PowerShell 7+** (`pwsh.exe`) - if installed
+2. **Windows PowerShell 5.1** (`powershell.exe`) - fallback
+
+### Working Directory
+
+- Default: User home directory (`~` / `%USERPROFILE%`)
+- Change with `Set-Location` or `cd`:
+  ```powershell
+  Set-Location C:\Projects; Get-ChildItem
+  ```
+
+### Encoding
+
+Forces UTF-8 for all input/output:
+
+```powershell
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+```
+
+This ensures proper handling of:
+- Non-ASCII characters (é, ñ, 中文)
+- Emoji and Unicode symbols
+- International file names
+
+### Environment Variables
+
+Inherits parent process environment with enhancements:
+
+- **PATH**: Merged from:
+  - System registry (`HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment`)
+  - User registry (`HKCU\Environment`)
+  - Parent process PATH
+- **PATHEXT**: `.COM;.EXE;.BAT;.CMD;.VBS;.JS;.PY;.PYW` (if missing)
+
+This allows executing system tools without absolute paths:
+
+```powershell
+ssh user@host          # Works even if not in inherited PATH
+OpenSSH\ssh.exe user@host  # Not needed
+```
+
+## Examples
+
+### File System Operations
+
+```powershell
+# List files with filtering
+Get-ChildItem C:\Users -Filter *.txt -Recurse | Select-Object FullName, Length
+
+# Create directory structure
+New-Item -Path "C:\Projects\MyApp\src" -ItemType Directory -Force
+
+# Copy files with progress
+Copy-Item -Path "C:\Source\*" -Destination "C:\Backup" -Recurse -Verbose
+
+# Delete old files
+Get-ChildItem C:\Temp -Recurse | Where-Object { $_.LastWriteTime -lt (Get-Date).AddDays(-30) } | Remove-Item -Force
+```
+
+### Process Management
+
+```powershell
+# Find processes by memory usage
+Get-Process | Sort-Object WorkingSet64 -Descending | Select-Object -First 10 Name, @{N='Memory(MB)';E={[math]::Round($_.WorkingSet64/1MB,2)}}
+
+# Start application with arguments
+Start-Process notepad.exe -ArgumentList "C:\file.txt" -WindowStyle Maximized
+
+# Stop hung processes
+Get-Process -Name chrome | Where-Object { $_.Responding -eq $false } | Stop-Process -Force
+```
+
+### Network Operations
+
+```powershell
+# Download file
+Invoke-WebRequest -Uri "https://example.com/file.zip" -OutFile "C:\Downloads\file.zip"
+
+# Test connectivity
+Test-NetConnection -ComputerName google.com -Port 443
+
+# Get public IP
+(Invoke-WebRequest -Uri "https://api.ipify.org").Content
+
+# DNS lookup
+Resolve-DnsName github.com -Type A
+```
+
+### System Information
+
+```powershell
+# OS details
+Get-CimInstance Win32_OperatingSystem | Select-Object Caption, Version, BuildNumber, LastBootUpTime
+
+# Disk space
+Get-PSDrive -PSProvider FileSystem | Select-Object Name, @{N='Used(GB)';E={[math]::Round($_.Used/1GB,2)}}, @{N='Free(GB)';E={[math]::Round($_.Free/1GB,2)}}
+
+# Installed software
+Get-ItemProperty HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* | Select-Object DisplayName, DisplayVersion, Publisher | Sort-Object DisplayName
+
+# Environment variables
+Get-ChildItem Env: | Sort-Object Name
+```
+
+### Registry Operations
+
+```powershell
+# Read registry value
+Get-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize" -Name AppsUseLightTheme
+
+# Set registry value
+Set-ItemProperty -Path "HKCU:\Control Panel\Desktop" -Name Wallpaper -Value "C:\wallpaper.jpg"
+
+# Create registry key
+New-Item -Path "HKCU:\Software\MyApp" -Force
+New-ItemProperty -Path "HKCU:\Software\MyApp" -Name Version -Value "1.0" -PropertyType String
+
+# Export registry key
+reg export "HKCU\Software\MyApp" "C:\backup.reg"
+```
+
+### Text Processing
+
+```powershell
+# Parse CSV
+Import-Csv C:\data.csv | Where-Object { $_.Age -gt 30 } | Export-Csv C:\filtered.csv -NoTypeInformation
+
+# JSON manipulation
+$json = Get-Content C:\config.json | ConvertFrom-Json
+$json.settings.theme = "dark"
+$json | ConvertTo-Json -Depth 10 | Set-Content C:\config.json
+
+# Regex search in files
+Select-String -Path "C:\logs\*.log" -Pattern "ERROR" | Select-Object Path, LineNumber, Line
+```
+
+### Scheduled Tasks
+
+```powershell
+# Create task
+$action = New-ScheduledTaskAction -Execute "notepad.exe"
+$trigger = New-ScheduledTaskTrigger -Daily -At 9am
+Register-ScheduledTask -TaskName "DailyNote" -Action $action -Trigger $trigger
+
+# List tasks
+Get-ScheduledTask | Where-Object State -eq "Ready" | Select-Object TaskName, State
+
+# Remove task
+Unregister-ScheduledTask -TaskName "DailyNote" -Confirm:$false
+```
+
+## Return Values
+
+### Success (status code 0)
+
+```
+Response: <stdout output>
+Status Code: 0
+```
+
+Example:
+```
+Response: C:\Users\JohnDoe
+Status Code: 0
+```
+
+### Command Error (non-zero exit code)
+
+```
+Response: <stderr output>
+Status Code: <exit_code>
+```
+
+Example:
+```
+Response: Get-Item : Cannot find path 'C:\nonexistent' because it does not exist.
+Status Code: 1
+```
+
+### Timeout
+
+```
+Response: Command execution timed out
+Status Code: 1
+```
+
+### Execution Failure
+
+```
+Response: Command execution failed: <error_type>: <error_message>
+Status Code: 1
+```
+
+## Error Handling
+
+### Common Errors
+
+```powershell
+# File not found
+Get-Content C:\nonexistent.txt
+# Returns: "Get-Content : Cannot find path..."
+
+# Access denied
+Remove-Item C:\Windows\System32\important.dll
+# Returns: "Remove-Item : Access to the path is denied."
+
+# Invalid cmdlet
+Get-FakeCommand
+# Returns: "Get-FakeCommand : The term 'Get-FakeCommand' is not recognized..."
+```
+
+### Error Suppression
+
+```powershell
+# Silent error handling
+Get-Item C:\nonexistent -ErrorAction SilentlyContinue
+
+# Custom error messages
+try {
+    Get-Item C:\nonexistent -ErrorAction Stop
+} catch {
+    Write-Output "File not found, using default"
+}
+```
+
+## Practical Use Cases
+
+### Automated Backup Script
+
+```powershell
+$source = "C:\Users\$env:USERNAME\Documents"
+$dest = "D:\Backups\$(Get-Date -Format yyyy-MM-dd)"
+New-Item -Path $dest -ItemType Directory -Force
+Copy-Item -Path $source\* -Destination $dest -Recurse -Force
+Write-Output "Backup completed: $dest"
+```
+
+### System Health Check
+
+```powershell
+$cpu = (Get-Counter '\Processor(_Total)\% Processor Time').CounterSamples.CookedValue
+$mem = (Get-Counter '\Memory\Available MBytes').CounterSamples.CookedValue
+$disk = (Get-PSDrive C).Free / 1GB
+Write-Output "CPU: $([math]::Round($cpu,2))% | RAM: $([math]::Round($mem,0))MB | Disk: $([math]::Round($disk,2))GB"
+```
+
+### Bulk File Renaming
+
+```powershell
+Get-ChildItem C:\Photos -Filter *.jpg | ForEach-Object {
+    $newName = "Vacation_$(Get-Date $_.CreationTime -Format yyyyMMdd_HHmmss)$($_.Extension)"
+    Rename-Item $_.FullName -NewName $newName
+}
+```
+
+### Service Monitoring
+
+```powershell
+$service = Get-Service -Name wuauserv
+if ($service.Status -ne 'Running') {
+    Start-Service wuauserv
+    Write-Output "Windows Update service started"
+} else {
+    Write-Output "Windows Update service already running"
+}
+```
+
+## Security Considerations
+
+<Warning>
+**Execution Policy**: The tool runs with `-NoProfile` to avoid user profile scripts, but does NOT bypass execution policy. Scripts may fail if policy is restrictive.
+
+To check policy:
+```powershell
+Get-ExecutionPolicy
+```
+
+To allow scripts (as admin):
+```powershell
+Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+```
+</Warning>
+
+### Dangerous Commands to Avoid
+
+```powershell
+# DO NOT RUN - Deletes all files
+Remove-Item C:\* -Recurse -Force
+
+# DO NOT RUN - Corrupts Windows
+Remove-Item C:\Windows\System32 -Recurse -Force
+
+# DO NOT RUN - Disables network
+Disable-NetAdapter -Name * -Confirm:$false
+
+# DO NOT RUN - Formats drive
+Format-Volume -DriveLetter D -Force
+```
+
+## Performance Tips
+
+### Avoid Expensive Operations
+
+```powershell
+# Slow - iterates all files
+Get-ChildItem C:\ -Recurse | Measure-Object
+
+# Fast - limits scope
+Get-ChildItem C:\Users\$env:USERNAME -Recurse -Depth 2 | Measure-Object
+```
+
+### Use Filtering Early
+
+```powershell
+# Slow - filters after retrieval
+Get-Process | Where-Object { $_.Name -eq 'chrome' }
+
+# Fast - filters during retrieval
+Get-Process -Name chrome
+```
+
+### Parallel Execution (PowerShell 7+)
+
+```powershell
+# Sequential (slow)
+1..10 | ForEach-Object { Start-Sleep 1; $_ }
+
+# Parallel (fast)
+1..10 | ForEach-Object -Parallel { Start-Sleep 1; $_ } -ThrottleLimit 10
+```
+
+## Related Tools
+
+- **FileSystem**: Structured file operations (read, write, copy, delete)
+- **Registry**: Dedicated registry operations with safer interface
+- **Process**: List and kill processes with tabular output
+- **App**: Launch applications with fuzzy name matching
+- **Scrape**: Fetch web content (alternative to `Invoke-WebRequest` for simple cases)

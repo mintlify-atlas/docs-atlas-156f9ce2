@@ -1,0 +1,222 @@
+---
+title: 'Click'
+description: 'Perform mouse clicks at coordinates or UI element labels'
+icon: 'mouse-pointer'
+---
+
+## Overview
+
+The **Click** tool performs mouse clicks at specified coordinates or on labeled UI elements discovered by Snapshot. Supports left, right, and middle button clicks as well as double-clicks and hover.
+
+<Tip>
+Call Snapshot first to get element labels and coordinates before using Click.
+</Tip>
+
+## Function Signature
+
+```python
+def click_tool(
+    loc: list[int] | None = None,
+    label: int | None = None,
+    button: Literal["left", "right", "middle"] = "left",
+    clicks: int = 1,
+    ctx: Context = None,
+) -> str
+```
+
+## Parameters
+
+<ParamField path="loc" type="list[int]" default={null}>
+  Target coordinates as `[x, y]` in virtual desktop coordinate space. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="label" type="int" default={null}>
+  UI element label/ID from Snapshot output. The tool will automatically resolve this to coordinates. Either `loc` or `label` must be provided.
+</ParamField>
+
+<ParamField path="button" type="string" default="left">
+  Mouse button to click:
+  - `"left"`: Primary button for selection and activation
+  - `"right"`: Context menu button
+  - `"middle"`: Middle mouse button
+</ParamField>
+
+<ParamField path="clicks" type="int" default={1}>
+  Number of clicks:
+  - `0`: Hover only (move cursor without clicking)
+  - `1`: Single click (select/focus)
+  - `2`: Double click (open/activate)
+</ParamField>
+
+## Coordinate System
+
+Click uses the **virtual desktop coordinate space**:
+
+- Coordinates from Snapshot can be used directly
+- Multi-monitor setups: coordinates span all displays
+- Origin `(0,0)` is typically the top-left of the primary monitor
+- Negative coordinates are possible with certain monitor arrangements
+
+<CardGroup cols={2}>
+  <Card title="Using Coordinates" icon="map-pin">
+    Pass exact `[x, y]` coordinates from Snapshot or manual calculation.
+  </Card>
+  <Card title="Using Labels" icon="tag">
+    Reference UI elements by their numeric label from Snapshot's interactive elements list.
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Click by Coordinates
+
+```json
+{
+  "loc": [500, 300],
+  "button": "left",
+  "clicks": 1
+}
+```
+
+Single left-click at coordinates `(500, 300)`.
+
+### Click by Element Label
+
+```json
+{
+  "label": 42,
+  "button": "left",
+  "clicks": 1
+}
+```
+
+Clicks the UI element with label `42` from the most recent Snapshot.
+
+### Double-Click to Open
+
+```json
+{
+  "loc": [800, 400],
+  "button": "left",
+  "clicks": 2
+}
+```
+
+Double-click at `(800, 400)` to open a file or folder.
+
+### Right-Click for Context Menu
+
+```json
+{
+  "loc": [600, 350],
+  "button": "right",
+  "clicks": 1
+}
+```
+
+Right-click to open context menu at the specified location.
+
+### Hover Without Clicking
+
+```json
+{
+  "loc": [700, 200],
+  "clicks": 0
+}
+```
+
+Move cursor to `(700, 200)` without clicking. Useful for revealing tooltips or triggering hover effects.
+
+### Middle-Click
+
+```json
+{
+  "loc": [450, 250],
+  "button": "middle",
+  "clicks": 1
+}
+```
+
+Middle-click at coordinates (often used to open links in new tabs).
+
+## Common Patterns
+
+### Click and Wait for UI Update
+
+After clicking, allow time for the UI to respond:
+
+1. Call **Click** on a button
+2. Call **Wait** with `duration: 1` or `2`
+3. Call **Snapshot** to verify the change
+
+### Click on Dynamic Element
+
+For elements that may move:
+
+1. Call **Snapshot** to get current position
+2. Call **Click** using the `label` parameter immediately
+3. Avoid using cached coordinates from old Snapshots
+
+### Context Menu Selection
+
+1. Call **Click** with `button: "right"` to open menu
+2. Call **Wait** briefly for menu to appear
+3. Call **Snapshot** to locate menu items
+4. Call **Click** on the desired menu item coordinates
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Click has no effect">
+    Possible causes:
+    - Target window is not focused (use App tool to switch focus first)
+    - Application is running with elevated privileges (run Windows-MCP elevated)
+    - Coordinates are outside the visible screen area
+    - UI element requires double-click instead of single-click
+  </Accordion>
+
+  <Accordion title="'Either loc or label must be provided' error">
+    You must specify exactly one of `loc` or `label`. Don't provide both or neither.
+  </Accordion>
+
+  <Accordion title="'Failed to find element with label X' error">
+    The label doesn't exist in the current desktop state:
+    - Call Snapshot again to refresh element labels
+    - The UI may have changed since the last Snapshot
+    - Element may not be visible or accessible
+  </Accordion>
+
+  <Accordion title="'Desktop state is empty' error">
+    You attempted to use `label` without calling Snapshot first. Always call Snapshot before using element labels.
+  </Accordion>
+
+  <Accordion title="Click lands in wrong location">
+    On multi-monitor setups:
+    - Verify you're using coordinates from a recent Snapshot
+    - Check that monitor arrangement hasn't changed
+    - Use the `display` parameter in Snapshot to limit to specific monitors
+  </Accordion>
+
+  <Accordion title="Double-click doesn't open item">
+    Some applications require specific timing between clicks. If `clicks: 2` doesn't work:
+    - Try two separate single clicks with a Wait in between
+    - Verify the item is selected before double-clicking
+  </Accordion>
+</AccordionGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera" href="/tools/snapshot">
+    Get coordinates and labels for UI elements
+  </Card>
+  <Card title="Type" icon="keyboard" href="/tools/type">
+    Enter text after clicking into a field
+  </Card>
+  <Card title="Move" icon="up-down-left-right" href="/tools/move">
+    Move cursor without clicking
+  </Card>
+  <Card title="Wait" icon="clock" href="/tools/wait">
+    Pause after clicking to allow UI to update
+  </Card>
+</CardGroup>

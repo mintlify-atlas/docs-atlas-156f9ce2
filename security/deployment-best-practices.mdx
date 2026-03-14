@@ -1,0 +1,402 @@
+---
+title: Deployment Best Practices
+description: Recommended deployment strategies and security practices for Windows-MCP
+---
+
+## Recommended Safe Deployment
+
+<Warning>
+  For safer experimentation and usage, **strongly consider** deploying Windows-MCP in isolated environments rather than on production systems.
+</Warning>
+
+The following deployment strategies provide layers of protection against accidental or malicious actions:
+
+### Virtual Machines (VMs)
+
+<CardGroup cols={1}>
+  <Card title="Virtual Machine Deployment" icon="server">
+    The recommended approach for most use cases
+  </Card>
+</CardGroup>
+
+**Benefits:**
+- Use VMware, VirtualBox, Hyper-V, or similar virtualization platforms
+- Take snapshots before each session for easy rollback
+- Isolate the VM from production networks
+- Limit VM access to non-sensitive resources only
+
+**Best Practices:**
+```powershell
+# Before starting a Windows-MCP session, create a VM snapshot
+Checkpoint-VM -Name "Windows-MCP-Test" -SnapshotName "Pre-Session-$(Get-Date -Format 'yyyy-MM-dd-HHmm')"
+
+# After the session, you can easily restore if needed
+Restore-VMSnapshot -Name "Pre-Session-2024-01-15-1430" -VMName "Windows-MCP-Test" -Confirm:$false
+```
+
+### Sandboxed Environments
+
+<CardGroup cols={2}>
+  <Card title="Windows Sandbox" icon="box">
+    Built into Windows 10/11 Pro/Enterprise - perfect for temporary testing
+  </Card>
+  <Card title="Containerized Windows" icon="docker">
+    Windows containers for isolated, reproducible environments
+  </Card>
+</CardGroup>
+
+**Windows Sandbox Advantages:**
+- Automatically destroyed when closed
+- Fresh, clean environment every time
+- Lightweight and fast to spin up
+- Built into Windows (no additional software required)
+
+**Setup:**
+```powershell
+# Enable Windows Sandbox (requires admin privileges)
+Enable-WindowsOptionalFeature -FeatureName "Containers-DisposableClientVM" -All -Online
+```
+
+### Dedicated Test Systems
+
+**Characteristics:**
+- Separate physical machines used only for testing
+- Systems with regular backups and disaster recovery plans
+- Machines that can be wiped and rebuilt without consequence
+
+## Impact Limitation Strategies
+
+<Warning>
+  If you must use Windows-MCP on a regular system, implement multiple layers of protection.
+</Warning>
+
+### 1. Create a Dedicated User Account
+
+Run the MCP server under a restricted user account with minimal permissions:
+
+```powershell
+# Create a restricted user account for Windows-MCP
+New-LocalUser -Name "WindowsMCPUser" -Description "Restricted account for MCP automation" -NoPassword
+
+# Add to Users group (NOT Administrators)
+Add-LocalGroupMember -Group "Users" -Member "WindowsMCPUser"
+
+# Set folder permissions for MCP workspace
+$acl = Get-Acl "C:\MCPWorkspace"
+$permission = "WindowsMCPUser","Modify","ContainerInherit,ObjectInherit","None","Allow"
+$accessRule = New-Object System.Security.AccessControl.FileSystemAccessRule $permission
+$acl.SetAccessRule($accessRule)
+Set-Acl "C:\MCPWorkspace" $acl
+```
+
+### 2. Regular Backups
+
+Maintain frequent, verified backups of all important data:
+
+- Use Windows Backup or third-party backup solutions
+- Test restore procedures regularly
+- Keep backups on separate storage (external drive, cloud)
+- Schedule automated backups before automation sessions
+
+### 3. Network Isolation
+
+<CardGroup cols={2}>
+  <Card title="Firewall Rules" icon="firewall">
+    Restrict network access for the MCP server process
+  </Card>
+  <Card title="Network Segmentation" icon="network-wired">
+    Isolate the system from production networks
+  </Card>
+</CardGroup>
+
+**Firewall Configuration:**
+```powershell
+# Block all outbound connections for Windows-MCP (except localhost)
+New-NetFirewallRule -DisplayName "Block Windows-MCP Outbound" `
+  -Direction Outbound `
+  -Program "C:\Path\To\windows-mcp.exe" `
+  -Action Block `
+  -RemoteAddress Any
+
+# Allow only localhost connections
+New-NetFirewallRule -DisplayName "Allow Windows-MCP Localhost" `
+  -Direction Outbound `
+  -Program "C:\Path\To\windows-mcp.exe" `
+  -Action Allow `
+  -RemoteAddress 127.0.0.1
+```
+
+### 4. Supervised Operation
+
+- Always monitor the agent's actions in real-time
+- Be ready to intervene if unexpected behavior occurs
+- Review agent plans before execution when possible
+- Keep emergency stop procedures readily available
+
+### 5. Disable High-Risk Tools
+
+Modify the MCP server configuration to exclude dangerous tools:
+
+```python
+# In main.py, comment out or remove high-risk tools
+# @mcp.tool()
+# async def shell(...):  # DISABLED for safety
+#     ...
+
+# Keep only read-only tools enabled
+@mcp.tool()
+async def snapshot(...):
+    ...
+
+@mcp.tool()
+async def wait(...):
+    ...
+```
+
+### 6. Test First
+
+Thoroughly test workflows in a safe environment before production use:
+
+1. Develop automation scripts in a VM or sandbox
+2. Validate all steps manually
+3. Create rollback procedures
+4. Document known risks and edge cases
+5. Only then consider controlled production deployment
+
+## Best Practices by Use Case
+
+### Personal Productivity Automation
+
+<Card title="Recommended for" icon="check">
+  Personal productivity automation on your own machine
+</Card>
+
+**Guidelines:**
+- Use on your personal workstation only
+- Keep important files backed up
+- Monitor automation tasks actively
+- Start with simple, low-risk automations
+
+### Development and Testing Environments
+
+<Card title="Recommended for" icon="check">
+  Development and testing environments
+</Card>
+
+**Guidelines:**
+- Use dedicated development VMs
+- Implement version control for all code
+- Create test data sets (not production data)
+- Use containerized environments when possible
+
+### QA Automation
+
+<Card title="Recommended for" icon="check">
+  QA automation in isolated test systems
+</Card>
+
+**Guidelines:**
+- Deploy in isolated test environments
+- Use test data only (never production data)
+- Implement comprehensive logging
+- Have rollback procedures ready
+
+### Shared Workstations
+
+<Card title="Use with caution" icon="triangle-exclamation">
+  Shared workstations or multi-user systems
+</Card>
+
+**Guidelines:**
+- Obtain explicit consent from all users
+- Use dedicated user accounts
+- Implement strict access controls
+- Monitor all automation activities
+- Document all automated tasks
+
+### Systems with Production Data Access
+
+<Card title="Use with caution" icon="triangle-exclamation">
+  Systems with access to production data
+</Card>
+
+**Guidelines:**
+- Use read-only database connections
+- Implement network segmentation
+- Disable destructive tools (Shell, Click, Type)
+- Require manual approval for all actions
+- Maintain comprehensive audit logs
+
+### Compliance-Regulated Environments
+
+<Card title="Use with caution" icon="triangle-exclamation">
+  Environments with compliance requirements (HIPAA, PCI-DSS, etc.)
+</Card>
+
+**Guidelines:**
+- Consult legal and compliance teams first
+- Implement comprehensive audit logging
+- Disable telemetry (`ANONYMIZED_TELEMETRY=false`)
+- Use only in isolated, non-production environments
+- Document all tool usage for compliance audits
+
+### Production Servers
+
+<Card title="Not recommended" icon="xmark">
+  Production servers or critical infrastructure
+</Card>
+
+**DO NOT deploy Windows-MCP on production infrastructure under any circumstances.**
+
+### Systems with Sensitive Data
+
+<Card title="Not recommended" icon="xmark">
+  Systems handling highly sensitive data (financial, medical, personal)
+</Card>
+
+**Reasons:**
+- Screenshot functionality may capture sensitive information
+- No guarantee against data exfiltration if LLM is compromised
+- Compliance violations likely
+
+## Run with Least Privilege
+
+<Warning>
+  Always run Windows-MCP with the minimum necessary permissions
+</Warning>
+
+### Recommendations:
+
+- Use a standard user account, **not an administrator account**, when possible
+- Avoid running Windows-MCP with elevated privileges unless absolutely necessary
+- Consider creating a dedicated user account for automation tasks
+- Use Windows User Account Control (UAC) to prevent privilege escalation
+
+### Verifying User Privileges:
+
+```powershell
+# Check current user privileges
+whoami /priv
+
+# Verify user is NOT in Administrators group
+net user $env:USERNAME
+```
+
+## Network Security
+
+### Transport Mode Security
+
+When using SSE or HTTP transport modes:
+
+- **Use localhost binding** (`127.0.0.1`) instead of `0.0.0.0` when possible
+- **Implement firewall rules** to restrict access to the MCP server ports
+- **Never expose the MCP server** directly to the internet without proper authentication
+- **Use VPNs or SSH tunnels** for remote access if absolutely necessary
+
+### Example Configuration:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"],
+      "transport": {
+        "type": "sse",
+        "host": "127.0.0.1",
+        "port": 8000
+      }
+    }
+  }
+}
+```
+
+## Trusted LLM Clients Only
+
+- Only connect Windows-MCP to **trusted MCP clients**
+- Be cautious when using with third-party or experimental LLM applications
+- Review the client application's security practices before integration
+- Verify the client's source code if possible
+
+## Monitor Tool Usage
+
+### Logging and Monitoring:
+
+- Regularly review logs to understand what actions are being performed
+- Be especially vigilant with high-risk tools (Shell, Click, Type)
+- Set up alerts for unexpected or suspicious activity
+- Implement custom logging middleware for compliance-sensitive environments
+
+### Example Monitoring:
+
+```python
+# Custom logging wrapper
+import logging
+from functools import wraps
+
+logger = logging.getLogger("windows-mcp-audit")
+
+def audit_log(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        logger.info(f"Tool called: {func.__name__} with args: {args}, kwargs: {kwargs}")
+        result = await func(*args, **kwargs)
+        logger.info(f"Tool {func.__name__} completed successfully")
+        return result
+    return wrapper
+```
+
+## Code Review and Auditing
+
+- **Review the source code** before deployment in production environments
+- **Audit any custom extensions** or modifications
+- **Keep dependencies up to date** to patch known vulnerabilities
+- Use `uv` for reproducible dependency management
+
+### Dependency Auditing:
+
+```bash
+# Check for known vulnerabilities in dependencies
+pip-audit
+
+# Update dependencies
+uv sync --upgrade
+```
+
+## Backup and Recovery
+
+### Pre-Deployment:
+
+- Maintain regular backups before using automation tools
+- Test automation workflows in a safe environment first
+- Have a recovery plan in case of unintended system changes
+
+### During Operation:
+
+- Create system restore points before each session
+- Maintain transaction logs for critical operations
+- Document all system changes
+
+### Recovery Procedures:
+
+```powershell
+# Create a system restore point
+Checkpoint-Computer -Description "Pre-Windows-MCP-Session" -RestorePointType "MODIFY_SETTINGS"
+
+# List available restore points
+Get-ComputerRestorePoint
+
+# Restore to a previous point (if needed)
+Restore-Computer -RestorePoint 42
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Tool Risk Assessment" icon="triangle-exclamation" href="/security/tool-risk-assessment">
+    Understand the risk levels of each tool
+  </Card>
+  <Card title="Security Overview" icon="shield" href="/security/overview">
+    Review critical security considerations
+  </Card>
+</CardGroup>

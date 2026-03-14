@@ -1,122 +1,147 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mint Starter Kit",
+  "name": "Windows-MCP",
+  "theme": "aspen",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#f58a23",
+    "light": "#fbb86e",
+    "dark": "#f58a23"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/logo.png",
+  "logo": {
+    "light": "/logo.png",
+    "dark": "/logo.png"
+  },
+  "navbar": {
+    "primary": {
+      "type": "github",
+      "href": "https://github.com/cursortouch/Windows-MCP"
+    }
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/cursortouch/Windows-MCP",
+      "twitter": "https://x.com/CursorTouch",
+      "discord": "https://discord.com/invite/Aue9Yj2VzS"
+    }
+  },
   "navigation": {
     "tabs": [
       {
-        "tab": "Guides",
+        "tab": "Documentation",
         "groups": [
           {
-            "group": "Getting started",
+            "group": "Get Started",
             "pages": [
-              "index",
-              "quickstart",
-              "development"
+              "introduction",
+              "quickstart"
             ]
           },
           {
-            "group": "Customization",
+            "group": "Installation",
             "pages": [
-              "essentials/settings",
-              "essentials/navigation"
+              "installation/overview",
+              "installation/claude-desktop",
+              "installation/perplexity",
+              "installation/gemini-cli",
+              "installation/qwen-code",
+              "installation/codex-cli"
             ]
           },
           {
-            "group": "Writing content",
+            "group": "Core Concepts",
             "pages": [
-              "essentials/markdown",
-              "essentials/code",
-              "essentials/images",
-              "essentials/reusable-snippets"
+              "concepts/mcp-protocol",
+              "concepts/operating-modes",
+              "concepts/transport-options",
+              "concepts/ui-automation"
             ]
           },
           {
-            "group": "AI tools",
+            "group": "Configuration",
             "pages": [
-              "ai-tools/cursor",
-              "ai-tools/claude-code",
-              "ai-tools/windsurf"
+              "configuration/modes",
+              "configuration/transport",
+              "configuration/environment-variables",
+              "configuration/telemetry"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/overview",
+              "security/deployment-best-practices",
+              "security/tool-risk-assessment"
             ]
           }
         ]
       },
       {
-        "tab": "API reference",
+        "tab": "Tool Reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
-              "api-reference/introduction"
+              "tools/overview"
             ]
           },
           {
-            "group": "Endpoint examples",
+            "group": "System Tools",
             "pages": [
-              "api-reference/endpoint/get",
-              "api-reference/endpoint/create",
-              "api-reference/endpoint/delete",
-              "api-reference/endpoint/webhook"
+              "tools/app",
+              "tools/shell",
+              "tools/filesystem",
+              "tools/process",
+              "tools/registry"
+            ]
+          },
+          {
+            "group": "UI Interaction",
+            "pages": [
+              "tools/snapshot",
+              "tools/click",
+              "tools/type",
+              "tools/scroll",
+              "tools/move",
+              "tools/shortcut"
+            ]
+          },
+          {
+            "group": "Advanced Tools",
+            "pages": [
+              "tools/scrape",
+              "tools/multiselect",
+              "tools/multiedit",
+              "tools/clipboard",
+              "tools/notification",
+              "tools/wait"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/overview",
+              "development/setup",
+              "development/code-style",
+              "development/testing"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/desktop-service",
+              "architecture/tree-service",
+              "architecture/uia-wrapper"
             ]
           }
         ]
       }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
-  },
-  "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:hi@mintlify.com"
-      }
-    ],
-    "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://dashboard.mintlify.com"
-    }
-  },
-  "contextual": {
-    "options": [
-     "copy",
-     "view",
-     "chatgpt",
-     "claude",
-     "perplexity",
-     "mcp",
-     "cursor",
-     "vscode"
-   ]
-  },
-  "footer": {
-    "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
-    }
+    ]
   }
 }

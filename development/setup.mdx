@@ -1,0 +1,306 @@
+---
+title: Development Setup
+description: Set up your Windows-MCP development environment
+---
+
+This guide will walk you through setting up your development environment for Windows-MCP.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+<CardGroup cols={2}>
+  <Card title="Windows OS" icon="windows">
+    Windows 7, 8, 8.1, 10, or 11
+  </Card>
+  
+  <Card title="Python 3.13+" icon="python" href="https://www.python.org/downloads/">
+    Download the latest Python version
+  </Card>
+  
+  <Card title="UV Package Manager" icon="package" href="https://github.com/astral-sh/uv">
+    Install with `pip install uv`
+  </Card>
+  
+  <Card title="Git" icon="git" href="https://git-scm.com/downloads">
+    Version control system
+  </Card>
+</CardGroup>
+
+You'll also need a [GitHub account](https://github.com/join) to fork the repository and submit pull requests.
+
+## Initial Setup
+
+<Steps>
+  <Step title="Fork the Repository">
+    Click the "Fork" button on the [Windows-MCP repository](https://github.com/CursorTouch/Windows-MCP) to create your own copy.
+  </Step>
+  
+  <Step title="Clone Your Fork">
+    Clone your forked repository to your local machine:
+    
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/Windows-MCP.git
+    cd Windows-MCP
+    ```
+    
+    Replace `YOUR_USERNAME` with your GitHub username.
+  </Step>
+  
+  <Step title="Add Upstream Remote">
+    Add the original repository as an upstream remote to keep your fork in sync:
+    
+    ```bash
+    git remote add upstream https://github.com/CursorTouch/Windows-MCP.git
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    Use UV to install all project dependencies:
+    
+    ```bash
+    uv sync
+    ```
+    
+    This will install both runtime dependencies and development tools (Ruff, pytest).
+  </Step>
+  
+  <Step title="Verify Installation">
+    Test that the installation was successful:
+    
+    ```bash
+    uv run windows-mcp --help
+    ```
+    
+    You should see the help output for the Windows-MCP server.
+  </Step>
+</Steps>
+
+## Development Workflow
+
+### Branching Strategy
+
+The `main` branch contains the latest stable code. Create feature branches from `main` using descriptive names:
+
+- **Features**: `feature/add-new-tool`
+- **Bug fixes**: `fix/click-tool-coordinates`
+- **Documentation**: `docs/update-readme`
+- **Refactoring**: `refactor/desktop-service`
+
+### Creating a Feature Branch
+
+<Steps>
+  <Step title="Update Main Branch">
+    Ensure your main branch is up to date:
+    
+    ```bash
+    git checkout main
+    git fetch upstream
+    git merge upstream/main
+    ```
+  </Step>
+  
+  <Step title="Create New Branch">
+    Create and switch to a new feature branch:
+    
+    ```bash
+    git checkout -b feature/your-feature-name
+    ```
+  </Step>
+  
+  <Step title="Make Your Changes">
+    - Write clean, readable code
+    - Follow the existing code structure
+    - Add comments for complex logic
+    - Update documentation as needed
+  </Step>
+  
+  <Step title="Test Your Changes">
+    Test manually in a safe environment (VM recommended). Add automated tests if applicable.
+  </Step>
+</Steps>
+
+### Commit Messages
+
+While we don't enforce a strict commit message format, please make your commits informative:
+
+<CodeGroup>
+```text Good Examples
+Add support for multi-monitor setups in State-Tool
+Fix Click-Tool coordinate offset on high DPI displays
+Update README with Perplexity Desktop installation steps
+Refactor Desktop class to improve error handling
+```
+
+```text Bad Examples
+fix bug
+update
+changes
+```
+</CodeGroup>
+
+## Pull Request Process
+
+### Before Submitting
+
+Ensure your pull request meets these requirements:
+
+- [ ] Code follows the project's style guidelines (run `ruff format .` and `ruff check .`)
+- [ ] All tests pass (if applicable)
+- [ ] Documentation is updated (README, docstrings, etc.)
+- [ ] Commit messages are clear and descriptive
+- [ ] Changes are tested in a safe environment (VM recommended)
+- [ ] No sensitive information (API keys, passwords) is included
+
+### Submitting a Pull Request
+
+<Steps>
+  <Step title="Update Your Branch">
+    Rebase your branch on the latest upstream main:
+    
+    ```bash
+    git fetch upstream
+    git rebase upstream/main
+    ```
+  </Step>
+  
+  <Step title="Push to Your Fork">
+    Push your changes to your GitHub fork:
+    
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+  
+  <Step title="Create Pull Request">
+    1. Go to the [Windows-MCP repository](https://github.com/CursorTouch/Windows-MCP)
+    2. Click "New Pull Request"
+    3. Select your fork and branch
+    4. Fill out the PR template with:
+       - **Description**: What does this PR do?
+       - **Motivation**: Why is this change needed?
+       - **Testing**: How was this tested?
+       - **Screenshots**: If applicable (UI changes, new features)
+       - **Related Issues**: Link any related issues
+  </Step>
+  
+  <Step title="Respond to Feedback">
+    - Address reviewer comments promptly
+    - Make requested changes in new commits
+    - Push updates to the same branch
+  </Step>
+</Steps>
+
+### Review Process
+
+- Maintainers will review your PR within a few days
+- You may be asked to make changes or provide clarification
+- Once approved, a maintainer will merge your PR
+- Your contribution will be acknowledged in release notes
+
+## Running the Development Server
+
+To run the MCP server during development:
+
+```bash
+uv run windows-mcp
+```
+
+This starts the server with stdio transport for testing with MCP clients.
+
+## Common Development Commands
+
+<CodeGroup>
+```bash Dependencies
+# Install/update dependencies
+uv sync
+
+# Add a new dependency
+uv add package-name
+
+# Add a dev dependency
+uv add --dev package-name
+```
+
+```bash Code Quality
+# Format code
+ruff format .
+
+# Lint code
+ruff check .
+
+# Lint and auto-fix
+ruff check --fix .
+```
+
+```bash Testing
+# Run all tests
+pytest
+
+# Run specific test file
+pytest tests/test_desktop.py
+
+# Run with coverage
+pytest --cov=src tests/
+```
+
+```bash Git
+# Update from upstream
+git fetch upstream
+git merge upstream/main
+
+# Create feature branch
+git checkout -b feature/my-feature
+
+# Stage and commit changes
+git add .
+git commit -m "Add feature: description"
+```
+</CodeGroup>
+
+## Reporting Issues
+
+### Bug Reports
+
+When reporting bugs, include:
+
+- **Description**: Clear description of the bug
+- **Steps to Reproduce**: Detailed steps to recreate the issue
+- **Expected Behavior**: What should happen
+- **Actual Behavior**: What actually happens
+- **Environment**: Windows version, Python version, MCP client
+- **Screenshots/Logs**: If applicable
+
+### Feature Requests
+
+When requesting features, include:
+
+- **Description**: What feature do you want?
+- **Use Case**: Why is this feature needed?
+- **Proposed Solution**: How might this be implemented?
+- **Alternatives**: Other approaches you've considered
+
+## Security Vulnerabilities
+
+<Warning>
+  **DO NOT** report security vulnerabilities through public GitHub issues.
+</Warning>
+
+Instead, please:
+
+1. Email the maintainers at [jeogeoalukka@gmail.com](mailto:jeogeoalukka@gmail.com)
+2. Or use [GitHub Security Advisories](https://github.com/CursorTouch/Windows-MCP/security/advisories)
+
+See the [Security Policy](https://github.com/CursorTouch/Windows-MCP/blob/main/SECURITY.md) for more details.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Code Style" icon="code" href="/development/code-style">
+    Learn about our code style guidelines and standards
+  </Card>
+  
+  <Card title="Testing" icon="flask" href="/development/testing">
+    Understand our testing procedures and best practices
+  </Card>
+</CardGroup>

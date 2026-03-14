@@ -1,0 +1,283 @@
+---
+title: 'Clipboard'
+description: 'Copy and paste text using the Windows clipboard'
+icon: 'clipboard'
+---
+
+## Overview
+
+The Clipboard tool provides read and write access to the Windows system clipboard. Use it to copy text data, retrieve clipboard contents, or facilitate data transfer between applications.
+
+## Function Signature
+
+```python
+def clipboard_tool(
+    mode: Literal["get", "set"],
+    text: str | None = None,
+    ctx: Context = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="mode" type="string" required>
+  The clipboard operation mode:
+  - `"get"`: Read the current clipboard content
+  - `"set"`: Write text to the clipboard
+</ParamField>
+
+<ParamField path="text" type="string" default="None">
+  The text to copy to the clipboard.
+  
+  **Required when:** `mode="set"`
+  
+  **Ignored when:** `mode="get"`
+</ParamField>
+
+## Return Value
+
+### get mode
+Returns the current clipboard content:
+```
+Clipboard content:
+[clipboard text]
+```
+
+If clipboard is empty or contains non-text data:
+```
+Clipboard is empty or contains non-text data.
+```
+
+### set mode
+Returns confirmation with preview (first 100 characters):
+```
+Clipboard set to: [text preview]...
+```
+
+## Usage Examples
+
+<CodeGroup>
+
+```python Read Clipboard
+# Get current clipboard content
+result = clipboard_tool(mode="get")
+# Returns: "Clipboard content:\nSome text that was copied"
+```
+
+```python Copy Text to Clipboard
+# Set clipboard to specific text
+result = clipboard_tool(
+    mode="set",
+    text="Hello, World!"
+)
+# Returns: "Clipboard set to: Hello, World!"
+```
+
+```python Copy Long Text
+# Copy longer text (shows preview in response)
+result = clipboard_tool(
+    mode="set",
+    text="This is a very long piece of text that will be truncated in the confirmation message but fully copied to clipboard"
+)
+# Returns: "Clipboard set to: This is a very long piece of text that will be truncated in the confirmation message but fu..."
+```
+
+```python Copy Multi-line Text
+# Copy text with line breaks
+result = clipboard_tool(
+    mode="set",
+    text="Line 1\nLine 2\nLine 3"
+)
+```
+
+</CodeGroup>
+
+## Common Use Cases
+
+<CardGroup cols={2}>
+
+<Card title="Data Transfer" icon="arrow-right-arrow-left">
+  Copy data from one application and paste into another
+</Card>
+
+<Card title="Text Extraction" icon="file-export">
+  Extract text from UI elements by selecting and reading clipboard
+</Card>
+
+<Card title="Bulk Copy Operations" icon="copy">
+  Copy generated text, codes, or data for user access
+</Card>
+
+<Card title="Clipboard Monitoring" icon="eye">
+  Read clipboard to verify copy operations or track copied content
+</Card>
+
+</CardGroup>
+
+## Supported Data Types
+
+| Data Type | get mode | set mode |
+|-----------|----------|----------|
+| Plain text (Unicode) | ✅ Supported | ✅ Supported |
+| Rich text (RTF) | ❌ Returns "non-text data" | ❌ Not supported |
+| Images | ❌ Returns "non-text data" | ❌ Not supported |
+| Files | ❌ Returns "non-text data" | ❌ Not supported |
+
+<Note>
+The tool only handles Unicode text (`CF_UNICODETEXT` format). Other formats (images, files, formatted text) are not supported.
+</Note>
+
+## Workflow Examples
+
+<AccordionGroup>
+
+<Accordion title="Copy data from application">
+```python
+# 1. Select text in source application
+click_tool(loc=[100, 200])  # Click start position
+move_tool(loc=[500, 200], drag=True)  # Drag to select
+
+# 2. Copy selection to clipboard
+shortcut_tool(shortcut="ctrl+c")
+
+# 3. Wait for copy operation
+wait_tool(duration=1)
+
+# 4. Read clipboard content
+result = clipboard_tool(mode="get")
+```
+</Accordion>
+
+<Accordion title="Paste data into application">
+```python
+# 1. Set clipboard content
+clipboard_tool(
+    mode="set",
+    text="Data to paste"
+)
+
+# 2. Click target field
+click_tool(loc=[300, 400])
+
+# 3. Paste from clipboard
+shortcut_tool(shortcut="ctrl+v")
+```
+</Accordion>
+
+<Accordion title="Verify copy operation">
+```python
+# 1. Perform copy operation
+shortcut_tool(shortcut="ctrl+c")
+wait_tool(duration=1)
+
+# 2. Verify clipboard content
+result = clipboard_tool(mode="get")
+
+# 3. Check if expected text was copied
+if "expected text" in result:
+    print("Copy successful")
+else:
+    print("Copy failed or unexpected content")
+```
+</Accordion>
+
+<Accordion title="Transfer data between applications">
+```python
+# 1. Copy from source app
+click_tool(loc=[100, 200])  # Focus source
+shortcut_tool(shortcut="ctrl+a")  # Select all
+shortcut_tool(shortcut="ctrl+c")  # Copy
+wait_tool(duration=1)
+
+# 2. Read to verify
+result = clipboard_tool(mode="get")
+
+# 3. Paste into target app
+click_tool(loc=[600, 400])  # Focus target
+shortcut_tool(shortcut="ctrl+v")  # Paste
+```
+</Accordion>
+
+</AccordionGroup>
+
+## Best Practices
+
+1. **Wait after copy operations**
+   ```python
+   shortcut_tool(shortcut="ctrl+c")
+   wait_tool(duration=1)  # Give time for clipboard update
+   clipboard_tool(mode="get")
+   ```
+
+2. **Verify clipboard state before pasting**
+   ```python
+   # Check clipboard before paste
+   current = clipboard_tool(mode="get")
+   if "expected content" in current:
+       shortcut_tool(shortcut="ctrl+v")
+   ```
+
+3. **Handle empty clipboard gracefully**
+   ```python
+   result = clipboard_tool(mode="get")
+   if "empty" in result or "non-text" in result:
+       # Clipboard doesn't contain usable text
+       pass
+   ```
+
+4. **Preserve original clipboard when needed**
+   ```python
+   # Save original clipboard
+   original = clipboard_tool(mode="get")
+   
+   # Do temporary clipboard operations
+   clipboard_tool(mode="set", text="temporary")
+   # ... operations ...
+   
+   # Restore original
+   clipboard_tool(mode="set", text=original.replace("Clipboard content:\n", ""))
+   ```
+
+## Error Handling
+
+Common errors and solutions:
+
+- **"text parameter required for set mode"**: Provide the `text` parameter when using `mode="set"`
+- **"Clipboard is empty"**: No text is currently copied; copy something first
+- **"non-text data"**: Clipboard contains an image, file, or formatted content (not supported)
+- **"Error managing clipboard"**: Windows clipboard access failed; try again
+
+## Security Considerations
+
+<Warning>
+**Sensitive Data**
+
+The clipboard may contain sensitive information:
+- Passwords copied from password managers
+- API keys or tokens
+- Personal information
+
+Be cautious when reading or logging clipboard content.
+</Warning>
+
+## Limitations
+
+- **Text only**: Only supports Unicode text format
+- **No history**: Cannot access clipboard history (Windows 10/11 clipboard history not supported)
+- **Single item**: Can only read/write the most recent clipboard item
+- **No format preservation**: Rich text formatting is lost (returns "non-text data")
+
+## Alternative Approaches
+
+| Task | Instead of Clipboard | Use This Tool |
+|------|---------------------|---------------|
+| Type text into fields | Set clipboard + Paste | [Type](/tools/type) or [MultiEdit](/tools/multiedit) |
+| Copy file paths | Clipboard from File Explorer | [FileSystem](/tools/filesystem) for direct file operations |
+| Extract visible text | Select text + Copy + Get clipboard | [Snapshot](/tools/snapshot) with UI tree extraction |
+
+## Related Tools
+
+- [Shortcut](/tools/shortcut) - Execute Ctrl+C, Ctrl+V for clipboard operations
+- [Type](/tools/type) - Directly type text without using clipboard
+- [Snapshot](/tools/snapshot) - Extract visible text from UI elements
+- [FileSystem](/tools/filesystem) - Read/write files without clipboard transfer

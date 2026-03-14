@@ -1,0 +1,454 @@
+---
+title: Testing
+description: Testing procedures and best practices for Windows-MCP
+---
+
+Testing is crucial for maintaining code quality and preventing regressions. This guide covers our testing procedures and best practices.
+
+## Testing Framework
+
+Windows-MCP uses **pytest** for testing. The testing framework is configured in `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+```
+
+## Running Tests
+
+<Tabs>
+  <Tab title="All Tests">
+    Run the complete test suite:
+    
+    ```bash
+    pytest
+    ```
+  </Tab>
+  
+  <Tab title="Specific File">
+    Run tests from a specific file:
+    
+    ```bash
+    pytest tests/test_desktop.py
+    ```
+  </Tab>
+  
+  <Tab title="With Coverage">
+    Run tests with coverage reporting:
+    
+    ```bash
+    pytest --cov=src tests/
+    ```
+  </Tab>
+  
+  <Tab title="Verbose Output">
+    Run tests with detailed output:
+    
+    ```bash
+    pytest -v
+    ```
+  </Tab>
+</Tabs>
+
+## Test Organization
+
+Tests are organized in the `tests/` directory, matching the source code structure:
+
+```
+tests/
+├── test_desktop.py      # Desktop service tests
+├── test_tree.py         # Tree service tests
+├── test_uia.py          # UIAutomation wrapper tests
+└── conftest.py          # Shared fixtures and configuration
+```
+
+## Writing Tests
+
+### Test Structure
+
+Follow this structure for test files:
+
+```python
+import pytest
+from windows_mcp.desktop.service import Desktop
+
+# Fixtures at the top
+@pytest.fixture
+def desktop():
+    """Provide a Desktop instance for testing."""
+    return Desktop()
+
+# Group related tests in classes
+class TestClickTool:
+    """Tests for the click_tool function."""
+    
+    def test_click_tool_validates_coordinates(self):
+        """Test that click_tool raises ValueError for invalid coordinates."""
+        with pytest.raises(ValueError, match="exactly 2 integers"):
+            click_tool([100])  # Missing y coordinate
+    
+    def test_click_tool_with_valid_coordinates(self, desktop):
+        """Test click_tool with valid coordinates."""
+        result = desktop.click([100, 200])
+        assert "Clicked at (100, 200)" in result
+    
+    def test_click_tool_supports_button_types(self, desktop):
+        """Test click_tool with different mouse buttons."""
+        for button in ['left', 'right', 'middle']:
+            result = desktop.click([100, 200], button=button)
+            assert button in result.lower()
+```
+
+### Test Naming
+
+**Use descriptive test names that explain what is being tested:**
+
+```python
+# Good
+def test_click_tool_validates_coordinates():
+    pass
+
+def test_get_state_returns_desktop_state_with_windows():
+    pass
+
+def test_type_tool_escapes_special_characters():
+    pass
+
+# Avoid
+def test_click():
+    pass
+
+def test_state():
+    pass
+
+def test_type():
+    pass
+```
+
+## Types of Tests
+
+### Unit Tests
+
+Test individual functions in isolation:
+
+```python
+import pytest
+from windows_mcp.desktop.service import _escape_text_for_sendkeys
+
+def test_escape_text_for_sendkeys_handles_braces():
+    """Test that curly braces are properly escaped."""
+    text = "Hello {world}"
+    result = _escape_text_for_sendkeys(text)
+    assert result == "Hello {{}world{}}"
+
+def test_escape_text_for_sendkeys_handles_newlines():
+    """Test that newlines are converted to {Enter}."""
+    text = "Line 1\nLine 2"
+    result = _escape_text_for_sendkeys(text)
+    assert result == "Line 1{Enter}Line 2"
+```
+
+### Integration Tests
+
+Test how components work together:
+
+```python
+import pytest
+from windows_mcp.desktop.service import Desktop
+
+@pytest.fixture
+def desktop():
+    return Desktop()
+
+def test_desktop_get_state_integration(desktop):
+    """Test that get_state integrates Desktop and Tree services."""
+    state = desktop.get_state(
+        use_annotation=True,
+        use_ui_tree=True
+    )
+    
+    assert state.screenshot is not None
+    assert isinstance(state.windows, list)
+    assert state.tree_state is not None
+```
+
+### Async Tests
+
+For testing async functions, use pytest's async support:
+
+```python
+import pytest
+
+@pytest.mark.asyncio
+async def test_async_tool_function():
+    """Test an async tool function."""
+    result = await some_async_function()
+    assert result is not None
+```
+
+## Using Fixtures
+
+**Fixtures provide reusable test setup:**
+
+```python
+import pytest
+from windows_mcp.desktop.service import Desktop
+from windows_mcp.tree.service import Tree
+
+@pytest.fixture
+def desktop():
+    """Provide a Desktop instance."""
+    return Desktop()
+
+@pytest.fixture
+def tree(desktop):
+    """Provide a Tree instance."""
+    return Tree(desktop)
+
+@pytest.fixture
+def sample_window_data():
+    """Provide sample window data for testing."""
+    return {
+        "title": "Test Window",
+        "handle": 12345,
+        "bounds": {"x": 0, "y": 0, "width": 800, "height": 600}
+    }
+
+# Use fixtures in tests
+def test_with_fixtures(desktop, sample_window_data):
+    """Test using multiple fixtures."""
+    # Test implementation
+    pass
+```
+
+## Mocking External Dependencies
+
+**Mock Windows API calls and external dependencies:**
+
+```python
+import pytest
+from unittest.mock import Mock, patch
+from windows_mcp.desktop.service import Desktop
+
+def test_click_tool_mocks_windows_api():
+    """Test click_tool with mocked Windows API."""
+    with patch('windows_mcp.uia.Click') as mock_click:
+        desktop = Desktop()
+        desktop.click([100, 200])
+        
+        # Verify the Windows API was called correctly
+        mock_click.assert_called_once_with(100, 200)
+
+def test_get_windows_mocks_win32gui():
+    """Test get_windows with mocked win32gui."""
+    with patch('win32gui.EnumWindows') as mock_enum:
+        mock_enum.return_value = [
+            (12345, "Window 1"),
+            (67890, "Window 2")
+        ]
+        
+        desktop = Desktop()
+        windows = desktop.get_windows()
+        
+        assert len(windows) == 2
+        assert windows[0].title == "Window 1"
+```
+
+## Testing Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Test One Thing" icon="bullseye">
+    Each test should verify one specific behavior
+    
+    ```python
+    # Good
+    def test_validates_x_coordinate():
+        pass
+    
+    def test_validates_y_coordinate():
+        pass
+    ```
+  </Card>
+  
+  <Card title="Use Assertions" icon="check">
+    Make clear assertions about expected behavior
+    
+    ```python
+    assert result == expected
+    assert len(items) > 0
+    assert "error" in message
+    ```
+  </Card>
+  
+  <Card title="Test Edge Cases" icon="triangle-exclamation">
+    Test boundary conditions and edge cases
+    
+    ```python
+    def test_with_empty_list():
+        pass
+    
+    def test_with_negative_value():
+        pass
+    ```
+  </Card>
+  
+  <Card title="Mock Safely" icon="shield">
+    Mock external dependencies to avoid side effects
+    
+    ```python
+    @patch('os.remove')
+    def test_delete(mock_remove):
+        pass
+    ```
+  </Card>
+</CardGroup>
+
+## Manual Testing
+
+### Safe Testing Environment
+
+<Warning>
+  Windows-MCP has full system access and can perform irreversible operations. **Always test in a safe environment.**
+</Warning>
+
+**Recommended testing environments:**
+
+1. **Windows Sandbox**: Built into Windows 10 Pro/Enterprise
+2. **Virtual Machine**: VMware, VirtualBox, or Hyper-V
+3. **Dedicated Test Machine**: Separate physical hardware
+
+### Testing New Features
+
+<Steps>
+  <Step title="Set Up Test Environment">
+    Launch Windows Sandbox or VM with a clean Windows installation.
+  </Step>
+  
+  <Step title="Install Dependencies">
+    Install Python 3.13+ and UV package manager in the test environment.
+  </Step>
+  
+  <Step title="Run Your Code">
+    Copy your code to the test environment and run:
+    
+    ```bash
+    uv sync
+    uv run windows-mcp
+    ```
+  </Step>
+  
+  <Step title="Test Manually">
+    - Test the new feature through an MCP client
+    - Verify expected behavior
+    - Test edge cases and error conditions
+    - Check for unintended side effects
+  </Step>
+  
+  <Step title="Document Results">
+    Note any issues, unexpected behavior, or areas for improvement.
+  </Step>
+</Steps>
+
+## Test Coverage
+
+**Aim for high test coverage, especially for:**
+
+- Core functionality (Desktop, Tree services)
+- Input validation and error handling
+- Edge cases and boundary conditions
+- Integration points between services
+
+**Check coverage:**
+
+```bash
+pytest --cov=src --cov-report=html tests/
+```
+
+This generates an HTML coverage report in `htmlcov/index.html`.
+
+## Continuous Integration
+
+While not currently configured, contributions that add CI/CD workflows are welcome. Consider:
+
+- Running tests on pull requests
+- Checking code coverage
+- Running linting and formatting checks
+- Testing on multiple Windows versions
+
+## Example Test File
+
+Here's a complete example test file:
+
+```python
+import pytest
+from unittest.mock import Mock, patch
+from windows_mcp.desktop.service import Desktop, _escape_text_for_sendkeys
+
+@pytest.fixture
+def desktop():
+    """Provide a Desktop instance for testing."""
+    return Desktop()
+
+class TestEscapeTextForSendkeys:
+    """Tests for the _escape_text_for_sendkeys helper function."""
+    
+    def test_escapes_opening_brace(self):
+        """Test that opening braces are escaped."""
+        result = _escape_text_for_sendkeys("{")
+        assert result == "{{}}"
+    
+    def test_escapes_closing_brace(self):
+        """Test that closing braces are escaped."""
+        result = _escape_text_for_sendkeys("}")
+        assert result == "{}}"
+    
+    def test_converts_newline_to_enter(self):
+        """Test that newlines are converted to {Enter}."""
+        result = _escape_text_for_sendkeys("\n")
+        assert result == "{Enter}"
+    
+    def test_converts_tab_to_tab_key(self):
+        """Test that tabs are converted to {Tab}."""
+        result = _escape_text_for_sendkeys("\t")
+        assert result == "{Tab}"
+    
+    def test_handles_complex_text(self):
+        """Test escaping of complex text with multiple special chars."""
+        text = "Hello {world}\nNext line\t"
+        result = _escape_text_for_sendkeys(text)
+        assert result == "Hello {{}world{}}{Enter}Next line{Tab}"
+
+class TestDesktopClick:
+    """Tests for the Desktop.click method."""
+    
+    def test_validates_coordinate_length(self, desktop):
+        """Test that click validates coordinate list length."""
+        with pytest.raises(ValueError, match="exactly 2 integers"):
+            desktop.click([100])  # Missing y coordinate
+    
+    @patch('windows_mcp.uia.Click')
+    def test_calls_uia_click(self, mock_click, desktop):
+        """Test that click calls the UIAutomation Click function."""
+        desktop.click([100, 200])
+        mock_click.assert_called_once_with(100, 200)
+    
+    def test_supports_button_types(self, desktop):
+        """Test that different button types are supported."""
+        for button in ['left', 'right', 'middle']:
+            with patch('windows_mcp.uia.Click'):
+                result = desktop.click([100, 200], button=button)
+                assert result is not None
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Code Style" icon="code" href="/development/code-style">
+    Review our code style guidelines
+  </Card>
+  
+  <Card title="Development Setup" icon="wrench" href="/development/setup">
+    Set up your development environment
+  </Card>
+</CardGroup>

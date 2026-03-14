@@ -1,0 +1,211 @@
+---
+title: 'Snapshot'
+description: 'Capture and inspect the Windows desktop state'
+icon: 'camera'
+---
+
+## Overview
+
+The **Snapshot** tool captures complete desktop state including screenshots, interactive UI elements, scrollable areas, open windows, and system information. It's the primary tool for understanding what's currently on screen before taking actions.
+
+<Note>
+Always call Snapshot first to understand the current desktop state before performing other actions.
+</Note>
+
+## Function Signature
+
+```python
+def state_tool(
+    use_vision: bool | str = False,
+    use_dom: bool | str = False,
+    use_annotation: bool | str = True,
+    use_ui_tree: bool | str = True,
+    width_reference_line: int | None = None,
+    height_reference_line: int | None = None,
+    display: list[int] | None = None,
+    ctx: Context = None
+)
+```
+
+## Parameters
+
+<ParamField path="use_vision" type="bool | str" default={false}>
+  Include screenshot with cursor highlight. When enabled, returns a PNG image showing the current desktop state.
+</ParamField>
+
+<ParamField path="use_dom" type="bool | str" default={false}>
+  Extract web page DOM elements instead of browser UI when focused on a browser window (Chrome, Edge, Firefox). Requires `use_ui_tree=True`.
+</ParamField>
+
+<ParamField path="use_annotation" type="bool | str" default={true}>
+  Draw colored bounding boxes around detected UI elements in the screenshot. Set to `False` for a clean screenshot without overlays.
+</ParamField>
+
+<ParamField path="use_ui_tree" type="bool | str" default={true}>
+  Extract interactive and scrollable UI elements using Windows UIAutomation. Set to `False` for faster screenshot-only snapshots.
+</ParamField>
+
+<ParamField path="width_reference_line" type="int" default={null}>
+  Number of vertical grid lines to overlay on the screenshot for spatial reasoning. Requires `use_vision=True`.
+</ParamField>
+
+<ParamField path="height_reference_line" type="int" default={null}>
+  Number of horizontal grid lines to overlay on the screenshot for spatial reasoning. Requires `use_vision=True`.
+</ParamField>
+
+<ParamField path="display" type="list[int]" default={null}>
+  Limit snapshot to specific monitor(s) by index. Examples: `[0]` for primary monitor, `[0,1]` for first two monitors. Omit to capture all displays.
+</ParamField>
+
+## Coordinate System
+
+Windows-MCP uses the **virtual desktop coordinate space**:
+
+- Origin `(0,0)` is typically at the top-left of the primary monitor
+- Multi-monitor setups extend this coordinate space
+- Negative coordinates are possible if monitors are positioned left/above the primary
+- All coordinates in Snapshot output match the coordinates used by Click, Type, Move, and Scroll tools
+
+<CardGroup cols={2}>
+  <Card title="Single Monitor" icon="desktop">
+    Coordinates range from `(0,0)` to `(width, height)` of your screen resolution.
+  </Card>
+  <Card title="Multi-Monitor" icon="display">
+    Coordinates span the entire virtual desktop. Use the `display` parameter to limit to specific monitors.
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Basic Snapshot (No Screenshot)
+
+```json
+{
+  "use_vision": false,
+  "use_ui_tree": true
+}
+```
+
+Returns text description of windows, interactive elements, and scrollable areas without image data.
+
+### Screenshot with Annotations
+
+```json
+{
+  "use_vision": true,
+  "use_annotation": true
+}
+```
+
+Returns screenshot with colored bounding boxes highlighting detected buttons, text fields, and other UI elements.
+
+### Clean Screenshot Only
+
+```json
+{
+  "use_vision": true,
+  "use_annotation": false,
+  "use_ui_tree": false
+}
+```
+
+Fastest option for just capturing the screen image without element detection or overlays.
+
+### Browser DOM Extraction
+
+```json
+{
+  "use_vision": false,
+  "use_dom": true,
+  "use_ui_tree": true
+}
+```
+
+When a browser (Chrome, Edge, Firefox) is active, extracts web page elements instead of browser chrome UI.
+
+### Multi-Monitor with Grid
+
+```json
+{
+  "use_vision": true,
+  "display": [0, 1],
+  "width_reference_line": 10,
+  "height_reference_line": 10
+}
+```
+
+Captures first two monitors with a 10x10 grid overlay for improved spatial reasoning.
+
+### Single Monitor Focus
+
+```json
+{
+  "use_vision": true,
+  "display": [0]
+}
+```
+
+Limits all snapshot information to the primary monitor only.
+
+## Output Format
+
+Snapshot returns structured text containing:
+
+- **Cursor Position**: Current mouse coordinates `(x, y)`
+- **Screenshot Resolution**: Captured image dimensions
+- **Screenshot Region**: Bounding box of captured area in virtual desktop coordinates
+- **Displays**: Which monitor indices were captured
+- **Active Desktop**: Current virtual desktop ID (Windows 10/11)
+- **Focused Window**: Title and details of the window with keyboard focus
+- **Opened Windows**: List of all visible windows with titles and positions
+- **Interactive Elements**: Buttons, text fields, links, menus with labels and coordinates
+- **Scrollable Elements**: Areas that can be scrolled with their current scroll position
+
+When `use_vision=True`, also returns a PNG image.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="No interactive elements found">
+    Some applications don't expose UIAutomation data. Try:
+    - Using `use_vision=True` for visual inspection
+    - Checking if the app is running with elevated privileges (requires running Windows-MCP elevated)
+    - Using coordinate-based clicking instead of element labels
+  </Accordion>
+
+  <Accordion title="use_dom requires use_ui_tree error">
+    The `use_dom` parameter requires UIAutomation to be enabled. Set `use_ui_tree=True` when using `use_dom=True`.
+  </Accordion>
+
+  <Accordion title="Screenshot is too small on high-DPI displays">
+    Screenshots are automatically scaled. Coordinates in the output match the coordinate space used by mouse/keyboard tools, so you can use them directly.
+  </Accordion>
+
+  <Accordion title="Snapshot fails with display parameter">
+    Ensure display indices are valid for your system. Index `0` is the primary monitor. Invalid indices will cause errors.
+  </Accordion>
+
+  <Accordion title="Browser DOM extraction returns empty">
+    Make sure:
+    - The browser window is focused and active
+    - You're using a supported browser (Chrome, Edge, Firefox)
+    - The web page has finished loading
+  </Accordion>
+</AccordionGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Click" icon="mouse-pointer" href="/tools/click">
+    Use coordinates from Snapshot to click UI elements
+  </Card>
+  <Card title="Type" icon="keyboard" href="/tools/type">
+    Enter text in fields discovered by Snapshot
+  </Card>
+  <Card title="Scroll" icon="arrows-up-down" href="/tools/scroll">
+    Scroll areas identified in Snapshot output
+  </Card>
+  <Card title="Move" icon="up-down-left-right" href="/tools/move">
+    Move cursor to coordinates from Snapshot
+  </Card>
+</CardGroup>

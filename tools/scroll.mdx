@@ -1,0 +1,271 @@
+---
+title: 'Scroll'
+description: 'Scroll windows and UI elements vertically or horizontally'
+icon: 'arrows-up-down'
+---
+
+## Overview
+
+The **Scroll** tool scrolls content vertically or horizontally at specified coordinates, labeled UI elements, or the current mouse position. Use it to navigate long documents, web pages, lists, and scrollable containers.
+
+<Tip>
+Snapshot identifies scrollable areas and their current scroll position. Use these areas as targets for Scroll.
+</Tip>
+
+## Function Signature
+
+```python
+def scroll_tool(
+    loc: list[int] | None = None,
+    label: int | None = None,
+    type: Literal["horizontal", "vertical"] = "vertical",
+    direction: Literal["up", "down", "left", "right"] = "down",
+    wheel_times: int = 1,
+    ctx: Context = None,
+) -> str
+```
+
+## Parameters
+
+<ParamField path="loc" type="list[int]" default={null}>
+  Target coordinates as `[x, y]` in virtual desktop coordinate space. If omitted, scrolls at the current mouse position.
+</ParamField>
+
+<ParamField path="label" type="int" default={null}>
+  UI element label/ID from Snapshot's scrollable elements list. Automatically resolves to coordinates.
+</ParamField>
+
+<ParamField path="type" type="string" default="vertical">
+  Scroll orientation:
+  - `"vertical"`: Scroll up/down
+  - `"horizontal"`: Scroll left/right
+</ParamField>
+
+<ParamField path="direction" type="string" default="down">
+  Scroll direction:
+  - For vertical: `"up"` or `"down"`
+  - For horizontal: `"left"` or `"right"`
+</ParamField>
+
+<ParamField path="wheel_times" type="int" default={1}>
+  Amount to scroll. Each wheel unit scrolls approximately 3-5 lines. Higher values scroll further.
+</ParamField>
+
+## Coordinate System
+
+Scroll uses the **virtual desktop coordinate space**:
+
+- Coordinates from Snapshot work directly
+- If `loc` is omitted, scrolls at the current cursor position
+- Multi-monitor setups use the full virtual desktop coordinates
+
+<CardGroup cols={2}>
+  <Card title="Using Coordinates" icon="map-pin">
+    Pass `[x, y]` coordinates of a scrollable area from Snapshot.
+  </Card>
+  <Card title="Using Labels" icon="tag">
+    Reference scrollable elements by their numeric label from Snapshot.
+  </Card>
+  <Card title="Current Position" icon="location-dot">
+    Omit `loc` and `label` to scroll at wherever the mouse cursor is.
+  </Card>
+</CardGroup>
+
+## Usage Examples
+
+### Scroll Down at Coordinates
+
+```json
+{
+  "loc": [800, 400],
+  "type": "vertical",
+  "direction": "down",
+  "wheel_times": 3
+}
+```
+
+Scrolls down 3 wheel units at `(800, 400)`. Approximately 9-15 lines.
+
+### Scroll by Element Label
+
+```json
+{
+  "label": 12,
+  "type": "vertical",
+  "direction": "up",
+  "wheel_times": 5
+}
+```
+
+Scrolls up in the scrollable element with label `12`.
+
+### Scroll at Current Mouse Position
+
+```json
+{
+  "type": "vertical",
+  "direction": "down",
+  "wheel_times": 1
+}
+```
+
+Scrolls down at wherever the cursor currently is. Useful after a Click or Move.
+
+### Horizontal Scroll
+
+```json
+{
+  "loc": [600, 500],
+  "type": "horizontal",
+  "direction": "right",
+  "wheel_times": 2
+}
+```
+
+Scrolls right 2 wheel units. Useful for wide spreadsheets or timelines.
+
+### Scroll to Top
+
+```json
+{
+  "label": 8,
+  "type": "vertical",
+  "direction": "up",
+  "wheel_times": 100
+}
+```
+
+Scrolls far up to reach the top of content. Adjust `wheel_times` based on content length.
+
+### Scroll to Bottom
+
+```json
+{
+  "loc": [700, 600],
+  "type": "vertical",
+  "direction": "down",
+  "wheel_times": 100
+}
+```
+
+Scrolls far down to reach the bottom.
+
+## Common Patterns
+
+### Navigate Long Web Page
+
+1. Call **Snapshot** to see current scroll position
+2. Call **Scroll** with `direction: "down"` and `wheel_times: 5`
+3. Call **Snapshot** again to see new content
+4. Repeat until you find the target content
+
+### Find Item in Long List
+
+1. Call **Scroll** down incrementally with `wheel_times: 3`
+2. Call **Snapshot** after each scroll to check for the item
+3. Once found, use **Click** to select it
+
+### Read Entire Document
+
+Scroll down page by page:
+
+```json
+{
+  "label": 5,
+  "type": "vertical",
+  "direction": "down",
+  "wheel_times": 10
+}
+```
+
+Repeat and call Snapshot each time to capture content.
+
+### Horizontal Spreadsheet Navigation
+
+```json
+{
+  "loc": [500, 300],
+  "type": "horizontal",
+  "direction": "right",
+  "wheel_times": 5
+}
+```
+
+Scroll right to see columns that are off-screen.
+
+## Scroll Amount Guidelines
+
+- **1 wheel_times**: ~3-5 lines (subtle scroll)
+- **3 wheel_times**: ~9-15 lines (small page)
+- **5 wheel_times**: ~15-25 lines (half screen)
+- **10 wheel_times**: ~30-50 lines (full screen)
+- **50+ wheel_times**: Jump to top/bottom (very long scroll)
+
+Actual scroll distance varies by application and system settings.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Scroll has no effect">
+    Possible causes:
+    - Area is not scrollable (check Snapshot's scrollable elements)
+    - Already at top/bottom of content
+    - Wrong window is focused (use Click to focus the scrollable area first)
+    - Application doesn't support mouse wheel scrolling
+  </Accordion>
+
+  <Accordion title="'Desktop state is empty' error">
+    You tried to use `label` without calling Snapshot first. Always call Snapshot before using element labels.
+  </Accordion>
+
+  <Accordion title="'Failed to find element with label X' error">
+    The label doesn't exist in the current desktop state:
+    - Call Snapshot again to refresh scrollable element labels
+    - UI may have changed since last Snapshot
+    - Element may not be scrollable
+  </Accordion>
+
+  <Accordion title="Scrolls wrong area">
+    Multiple scrollable regions may overlap:
+    - Click the target area first to ensure focus
+    - Use more specific coordinates within the desired scroll region
+    - Check Snapshot output for scroll area boundaries
+  </Accordion>
+
+  <Accordion title="Horizontal scroll doesn't work">
+    Some applications don't support horizontal mouse wheel scrolling:
+    - Try using keyboard shortcuts instead (Shortcut tool with arrow keys)
+    - Use application-specific scroll controls
+    - Check if the content is actually wider than the viewport
+  </Accordion>
+
+  <Accordion title="Can't determine current scroll position">
+    Call Snapshot with `use_ui_tree: true` to get scroll position data:
+    - Scrollable elements in Snapshot show current scroll percentage
+    - Some apps don't expose scroll position via UIAutomation
+  </Accordion>
+
+  <Accordion title="Scroll amount is inconsistent">
+    Different applications interpret wheel scrolling differently:
+    - Adjust `wheel_times` value based on testing
+    - Use smaller increments for precise control
+    - Application settings may affect scroll speed
+  </Accordion>
+</AccordionGroup>
+
+## Related Tools
+
+<CardGroup cols={2}>
+  <Card title="Snapshot" icon="camera" href="/tools/snapshot">
+    Identify scrollable areas and current scroll position
+  </Card>
+  <Card title="Click" icon="mouse-pointer" href="/tools/click">
+    Click to focus a scrollable area before scrolling
+  </Card>
+  <Card title="Move" icon="up-down-left-right" href="/tools/move">
+    Position cursor before scrolling at current position
+  </Card>
+  <Card title="Shortcut" icon="command" href="/tools/shortcut">
+    Alternative scrolling with Page Up/Down or arrow keys
+  </Card>
+</CardGroup>

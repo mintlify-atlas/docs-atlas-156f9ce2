@@ -1,0 +1,290 @@
+---
+title: 'App'
+description: 'Launch, resize, and switch between Windows applications'
+icon: 'window-maximize'
+---
+
+## Overview
+
+The **App** tool manages Windows applications and window operations. It supports three distinct modes for complete application lifecycle control.
+
+<CardGroup cols={3}>
+  <Card title="Launch" icon="rocket" href="#launch-mode">
+    Open and start applications
+  </Card>
+  <Card title="Resize" icon="expand" href="#resize-mode">
+    Adjust window size and position
+  </Card>
+  <Card title="Switch" icon="arrow-right-arrow-left" href="#switch-mode">
+    Bring windows to foreground
+  </Card>
+</CardGroup>
+
+## Function Signature
+
+```python
+def app_tool(
+    mode: Literal['launch', 'resize', 'switch'] = 'launch',
+    name: str | None = None,
+    window_loc: list[int] | None = None,
+    window_size: list[int] | None = None
+) -> str
+```
+
+## Parameters
+
+<ParamField path="mode" type="Literal['launch', 'resize', 'switch']" default="launch" required>
+  The operation mode:
+  - `launch`: Start a new application
+  - `resize`: Change window dimensions/position
+  - `switch`: Bring window to foreground focus
+</ParamField>
+
+<ParamField path="name" type="string">
+  Application or window name. Uses fuzzy matching (70% threshold) to find the best match.
+  - For **launch**: Matches against Start Menu app names (e.g., "notepad", "chrome")
+  - For **resize/switch**: Matches against open window titles
+</ParamField>
+
+<ParamField path="window_loc" type="list[int]">
+  Window position as `[x, y]` coordinates in pixels. Only used in `resize` mode.
+  - `x`: Distance from left edge of screen
+  - `y`: Distance from top edge of screen
+  - If omitted, current position is preserved
+</ParamField>
+
+<ParamField path="window_size" type="list[int]">
+  Window dimensions as `[width, height]` in pixels. Only used in `resize` mode.
+  - `width`: Window width in pixels
+  - `height`: Window height in pixels  
+  - If omitted, current size is preserved
+</ParamField>
+
+## Launch Mode
+
+Starts an application from the Windows Start Menu.
+
+### How It Works
+
+1. Queries installed apps via `Get-StartApps` PowerShell cmdlet
+2. Falls back to scanning Start Menu `.lnk` shortcuts if unavailable
+3. Uses fuzzy matching to find the best app name match
+4. Launches UWP apps via `shell:AppsFolder` protocol
+5. Launches desktop apps via `Start-Process`
+6. Waits up to 10 seconds for the window to appear using UI Automation
+
+### Examples
+
+```python
+# Launch Notepad
+app_tool(mode="launch", name="notepad")
+# Returns: "Notepad launched."
+
+# Launch Google Chrome
+app_tool(mode="launch", name="chrome")
+# Returns: "Google Chrome launched."
+
+# Launch with fuzzy matching
+app_tool(mode="launch", name="calc")
+# Returns: "Calculator launched."
+```
+
+### Error Cases
+
+```python
+# App not found in Start Menu
+app_tool(mode="launch", name="NonexistentApp")
+# Returns: "Nonexistentapp not found in start menu."
+```
+
+<Note>
+The tool searches both system-wide (`C:\ProgramData\Microsoft\Windows\Start Menu`) and user-specific (`%APPDATA%\Microsoft\Windows\Start Menu`) locations.
+</Note>
+
+## Resize Mode
+
+Adjusts the size and position of an existing window.
+
+### Behavior
+
+- If `name` is **not provided**: Resizes the active (foreground) window
+- If `name` **is provided**: Finds and resizes the matching window
+- Refreshes desktop state before operation to ensure accuracy
+- Only works on windows with `NORMAL` status (not minimized/maximized)
+
+### Examples
+
+```python
+# Resize active window to 800x600 at position (100, 100)
+app_tool(mode="resize", window_loc=[100, 100], window_size=[800, 600])
+# Returns: "Notepad resized to 800x600 at 100,100."
+
+# Move Notepad to (200, 150) without changing size
+app_tool(mode="resize", name="notepad", window_loc=[200, 150])
+# Returns: "Notepad resized to 1024x768 at 200,150."
+
+# Change only size of Chrome window
+app_tool(mode="resize", name="chrome", window_size=[1200, 900])
+# Returns: "Google Chrome resized to 1200x900 at 50,50."
+```
+
+### Error Cases
+
+```python
+# Window is minimized
+app_tool(mode="resize", name="notepad")
+# Returns: "Notepad is minimized" (status code 1)
+
+# Window is maximized
+app_tool(mode="resize", name="chrome")
+# Returns: "Google Chrome is maximized" (status code 1)
+
+# Window not found
+app_tool(mode="resize", name="NonexistentWindow")
+# Returns: "Application Nonexistentwindow not found." (status code 1)
+```
+
+<Warning>
+Resizing only works on windows in `NORMAL` status. Minimized or maximized windows must be restored first using the `switch` mode or the `Shortcut` tool.
+</Warning>
+
+## Switch Mode
+
+Brings a window to the foreground and focuses it.
+
+### Behavior
+
+- Finds window by fuzzy name matching
+- Automatically **restores minimized windows** before focusing
+- Attaches thread input to ensure reliable foreground activation
+- Works across virtual desktops (Windows 10/11)
+
+### Examples
+
+```python
+# Switch to Notepad
+app_tool(mode="switch", name="notepad")
+# Returns: "Switched to Notepad window."
+
+# Restore and switch to minimized Chrome
+app_tool(mode="switch", name="chrome")
+# Returns: "Restored Google Chrome from minimized and switched to it."
+
+# Switch using partial name
+app_tool(mode="switch", name="code")
+# Returns: "Switched to Visual Studio Code window."
+```
+
+### Error Cases
+
+```python
+# Window not found
+app_tool(mode="switch", name="InvalidApp")
+# Returns: "Application Invalidapp not found." (status code 1)
+
+# No windows open
+app_tool(mode="switch", name="notepad")
+# Returns: "No windows found on the desktop." (status code 1)
+```
+
+## Return Values
+
+### Success (string)
+
+- `"<AppName> launched."` - Application started successfully
+- `"<AppName> resized to <width>x<height> at <x>,<y>."` - Window resized
+- `"Switched to <AppName> window."` - Window brought to foreground
+- `"Restored <AppName> from minimized and switched to it."` - Minimized window restored
+
+### Errors (string + status code 1)
+
+- `"<AppName> not found in start menu."` - App doesn't exist
+- `"<AppName> is minimized"` - Cannot resize minimized window
+- `"<AppName> is maximized"` - Cannot resize maximized window
+- `"Application <Name> not found."` - Window not found for resize/switch
+- `"No windows found on the desktop."` - No open windows
+- `"Failed to get desktop state. Please try again."` - State capture failed
+
+## Practical Use Cases
+
+### Multi-Monitor Workflow Setup
+
+```python
+# Launch apps
+app_tool(mode="launch", name="chrome")
+app_tool(mode="launch", name="visual studio code")
+app_tool(mode="launch", name="slack")
+
+# Position them on different monitors (assuming 1920x1080 primary)
+app_tool(mode="resize", name="chrome", window_loc=[0, 0], window_size=[1920, 1080])
+app_tool(mode="resize", name="code", window_loc=[1920, 0], window_size=[1920, 1080])
+app_tool(mode="resize", name="slack", window_loc=[3840, 0], window_size=[800, 1080])
+```
+
+### Tiled Window Layout
+
+```python
+# Create 2x2 grid on 1920x1080 screen
+app_tool(mode="resize", name="notepad", window_loc=[0, 0], window_size=[960, 540])
+app_tool(mode="resize", name="chrome", window_loc=[960, 0], window_size=[960, 540])
+app_tool(mode="resize", name="terminal", window_loc=[0, 540], window_size=[960, 540])
+app_tool(mode="resize", name="explorer", window_loc=[960, 540], window_size=[960, 540])
+```
+
+### Focus Management
+
+```python
+# Switch between apps for workflow
+app_tool(mode="switch", name="chrome")  # Research
+# ... perform web research ...
+app_tool(mode="switch", name="code")    # Write code
+# ... write implementation ...
+app_tool(mode="switch", name="terminal") # Test
+# ... run tests ...
+```
+
+## Implementation Details
+
+### Fuzzy Matching
+
+Uses `thefuzz` library with a 70% similarity threshold:
+
+```python
+from fuzzywuzzy import process
+matched_app = process.extractOne(name, apps.keys(), score_cutoff=70)
+```
+
+Examples:
+- `"note"` matches `"Notepad"`
+- `"calc"` matches `"Calculator"`
+- `"code"` matches `"Visual Studio Code"`
+
+### Launch Detection
+
+After launching, the tool waits for the window to appear using two strategies:
+
+1. **PID-based** (for desktop apps):
+   ```python
+   uia.WindowControl(ProcessId=pid).Exists(maxSearchSeconds=10)
+   ```
+
+2. **Regex-based** (fallback for UWP apps):
+   ```python
+   uia.WindowControl(RegexName=f"(?i).*{safe_name}.*").Exists(maxSearchSeconds=10)
+   ```
+
+### Window Status
+
+Windows have three states that affect resize operations:
+
+- **NORMAL**: Window can be resized
+- **MINIMIZED**: `IsIconic()` returns true, cannot resize
+- **MAXIMIZED**: `IsZoomed()` returns true, cannot resize
+- **HIDDEN**: `IsWindowVisible()` returns false
+
+## Related Tools
+
+- **Snapshot**: Capture current window states and positions
+- **Shortcut**: Use `Win+Up`/`Win+Down` to maximize/minimize windows
+- **Click**: Interact with window controls (minimize/maximize buttons)
+- **Process**: View and manage running application processes

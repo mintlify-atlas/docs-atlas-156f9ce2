@@ -1,0 +1,588 @@
+---
+title: 'Registry'
+description: 'Read and write Windows Registry keys and values'
+icon: 'database'
+---
+
+## Overview
+
+The **Registry** tool provides safe, structured access to the Windows Registry. It supports four modes for comprehensive registry management with PowerShell-style path syntax.
+
+<Warning>
+**Critical System Component**: The Windows Registry controls OS and application settings. Incorrect modifications can:
+- Prevent Windows from booting
+- Corrupt applications
+- Cause data loss
+- Require system reinstallation
+
+Always backup registry keys before modification:
+```powershell
+reg export "HKEY_CURRENT_USER\Software\MyApp" "C:\backup.reg"
+```
+</Warning>
+
+<CardGroup cols={4}>
+  <Card title="Get" icon="eye" href="#get-mode">
+    Read registry values
+  </Card>
+  <Card title="Set" icon="pen-to-square" href="#set-mode">
+    Create or update values
+  </Card>
+  <Card title="Delete" icon="trash" href="#delete-mode">
+    Remove values or keys
+  </Card>
+  <Card title="List" icon="list" href="#list-mode">
+    Browse keys and values
+  </Card>
+</CardGroup>
+
+## Function Signature
+
+```python
+def registry_tool(
+    mode: Literal['get', 'set', 'delete', 'list'],
+    path: str,
+    name: str | None = None,
+    value: str | None = None,
+    type: Literal['String', 'DWord', 'QWord', 'Binary', 'MultiString', 'ExpandString'] = 'String'
+) -> str
+```
+
+## Parameters
+
+<ParamField path="mode" type="Literal['get', 'set', 'delete', 'list']" required>
+  Operation mode:
+  - `get`: Read a registry value
+  - `set`: Create or update a value
+  - `delete`: Remove a value or key
+  - `list`: List values and sub-keys under a path
+</ParamField>
+
+<ParamField path="path" type="string" required>
+  Registry key path in PowerShell format. Must include hive abbreviation:
+  - `HKCU:\` - HKEY_CURRENT_USER (user settings)
+  - `HKLM:\` - HKEY_LOCAL_MACHINE (system settings)
+  - `HKCR:\` - HKEY_CLASSES_ROOT (file associations)
+  - `HKU:\` - HKEY_USERS (all user profiles)
+  - `HKCC:\` - HKEY_CURRENT_CONFIG (hardware profiles)
+  
+  Example: `"HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes"`
+</ParamField>
+
+<ParamField path="name" type="string">
+  Value name within the registry key. Required for `get` and `set` modes.
+  - Use `"(Default)"` for the default value
+  - Case-insensitive
+  - Examples: `"Version"`, `"InstallPath"`, `"Enabled"`
+</ParamField>
+
+<ParamField path="value" type="string">
+  Value data to write. Required for `set` mode.
+  - String representation of the value
+  - Converted to appropriate type based on `type` parameter
+  - Examples: `"1.0"`, `"C:\\Program Files"`, `"1"` (for DWord)
+</ParamField>
+
+<ParamField path="type" type="Literal" default="String">
+  Registry value type for `set` mode:
+  - `String`: Text (REG_SZ)
+  - `ExpandString`: Text with environment variables (REG_EXPAND_SZ)
+  - `DWord`: 32-bit integer (REG_DWORD)
+  - `QWord`: 64-bit integer (REG_QWORD)
+  - `Binary`: Binary data (REG_BINARY)
+  - `MultiString`: Array of strings (REG_MULTI_SZ)
+</ParamField>
+
+## Get Mode
+
+Reads a value from the registry.
+
+### Examples
+
+```python
+# Read theme setting
+registry_tool(
+    mode="get",
+    path="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    name="AppsUseLightTheme"
+)
+# Returns: 'Registry value [HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize] "AppsUseLightTheme" = 0'
+
+# Read installed program version
+registry_tool(
+    mode="get",
+    path="HKLM:\\SOFTWARE\\MyApp",
+    name="Version"
+)
+# Returns: 'Registry value [HKLM:\SOFTWARE\MyApp] "Version" = 1.2.3'
+
+# Read default value
+registry_tool(
+    mode="get",
+    path="HKCR:\\.txt",
+    name="(Default)"
+)
+# Returns: 'Registry value [HKCR:\.txt] "(Default)" = txtfile'
+```
+
+### Error Cases
+
+```python
+# Key not found
+registry_tool(mode="get", path="HKCU:\\NonexistentKey", name="Value")
+# Returns: "Error reading registry: Cannot find path 'HKCU:\NonexistentKey'..."
+
+# Value not found
+registry_tool(mode="get", path="HKCU:\\Software", name="NonexistentValue")
+# Returns: "Error reading registry: Property NonexistentValue does not exist..."
+
+# Missing name parameter
+registry_tool(mode="get", path="HKCU:\\Software")
+# Returns: "Error: name parameter is required for get mode."
+```
+
+## Set Mode
+
+Creates or updates a registry value. Automatically creates parent keys if they don't exist.
+
+### Examples
+
+```python
+# Set string value
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp",
+    name="InstallPath",
+    value="C:\\Program Files\\MyApp",
+    type="String"
+)
+# Returns: 'Registry value [HKCU:\Software\MyApp] "InstallPath" set to "C:\Program Files\MyApp" (type: String).'
+
+# Set integer (DWord)
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp\\Settings",
+    name="MaxConnections",
+    value="10",
+    type="DWord"
+)
+# Returns: 'Registry value [HKCU:\Software\MyApp\Settings] "MaxConnections" set to "10" (type: DWord).'
+
+# Set path with environment variable
+registry_tool(
+    mode="set",
+    path="HKCU:\\Environment",
+    name="MYAPP_HOME",
+    value="%ProgramFiles%\\MyApp",
+    type="ExpandString"
+)
+# ExpandString will expand %ProgramFiles% when read
+
+# Set 64-bit integer (QWord)
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp",
+    name="MaxFileSize",
+    value="4294967296",  # 4GB in bytes
+    type="QWord"
+)
+```
+
+### Registry Value Types
+
+| Type | Description | Example Value | Common Uses |
+|------|-------------|---------------|-------------|
+| **String** | Plain text | `"Hello World"` | Names, descriptions, paths |
+| **ExpandString** | Text with env vars | `"%APPDATA%\\MyApp"` | Paths with variables |
+| **DWord** | 32-bit integer (0 to 4,294,967,295) | `"1"`, `"255"` | Flags, counts, small numbers |
+| **QWord** | 64-bit integer | `"9223372036854775807"` | Large numbers, timestamps |
+| **Binary** | Raw bytes | `"48656C6C6F"` (hex) | Custom data, binary configs |
+| **MultiString** | Array of strings | `"Line1\nLine2\nLine3"` | Lists, multiple paths |
+
+### Auto-Creation
+
+If the registry key doesn't exist, it will be created:
+
+```python
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\NewApp\\Settings\\Advanced",
+    name="Feature",
+    value="Enabled"
+)
+# Creates: HKCU:\Software\NewApp
+#          HKCU:\Software\NewApp\Settings
+#          HKCU:\Software\NewApp\Settings\Advanced
+# Then sets: Feature = "Enabled"
+```
+
+### Error Cases
+
+```python
+# Missing required parameters
+registry_tool(mode="set", path="HKCU:\\Software\\MyApp")
+# Returns: "Error: name parameter is required for set mode."
+
+registry_tool(mode="set", path="HKCU:\\Software\\MyApp", name="Key")
+# Returns: "Error: value parameter is required for set mode."
+
+# Invalid type
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp",
+    name="Key",
+    value="123",
+    type="InvalidType"
+)
+# Returns: "Error: invalid registry type 'InvalidType'. Allowed: Binary, DWord, ExpandString, MultiString, QWord, String"
+
+# Access denied (system key)
+registry_tool(
+    mode="set",
+    path="HKLM:\\SYSTEM\\CurrentControlSet\\Control",
+    name="Test",
+    value="1"
+)
+# Returns: "Error writing registry: Requested registry access is not allowed."
+```
+
+<Warning>
+**HKLM Requires Admin**: Writing to `HKEY_LOCAL_MACHINE` (HKLM) requires **administrator privileges**. Run Windows-MCP in an elevated PowerShell session.
+</Warning>
+
+## Delete Mode
+
+Removes a registry value or entire key.
+
+### Delete Value
+
+Provide `name` parameter to delete a single value:
+
+```python
+# Delete specific value
+registry_tool(
+    mode="delete",
+    path="HKCU:\\Software\\MyApp",
+    name="TempSetting"
+)
+# Returns: 'Registry value [HKCU:\Software\MyApp] "TempSetting" deleted.'
+```
+
+### Delete Key (Recursive)
+
+Omit `name` parameter to delete the entire key and all sub-keys:
+
+```python
+# Delete entire key
+registry_tool(
+    mode="delete",
+    path="HKCU:\\Software\\MyApp"
+)
+# Returns: 'Registry key [HKCU:\Software\MyApp] deleted.'
+# Deletes MyApp and ALL sub-keys recursively
+```
+
+### Error Cases
+
+```python
+# Key/value not found
+registry_tool(mode="delete", path="HKCU:\\NonexistentKey")
+# Returns: "Error deleting registry key: Cannot find path..."
+
+# Access denied
+registry_tool(mode="delete", path="HKLM:\\SYSTEM\\CurrentControlSet")
+# Returns: "Error deleting registry key: Requested registry access is not allowed."
+```
+
+<Warning>
+**Destructive Operation**: Deleting registry keys is **irreversible** and can break:
+- Windows functionality
+- Application settings
+- System stability
+
+Always backup before deletion:
+```powershell
+reg export "HKCU:\Software\MyApp" "C:\backup.reg"
+```
+</Warning>
+
+## List Mode
+
+Lists all values and sub-keys under a registry path.
+
+### Examples
+
+```python
+# List current user environment variables
+registry_tool(
+    mode="list",
+    path="HKCU:\\Environment"
+)
+# Returns:
+# Registry key [HKCU:\Environment]:
+# Values:
+# TEMP : C:\Users\John\AppData\Local\Temp
+# TMP  : C:\Users\John\AppData\Local\Temp
+# PATH : C:\Users\John\bin;C:\Tools
+# 
+# Sub-Keys:
+# (none)
+
+# List Windows version info
+registry_tool(
+    mode="list",
+    path="HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion"
+)
+# Returns:
+# Registry key [HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion]:
+# Values:
+# ProductName    : Windows 11 Pro
+# CurrentBuild   : 22631
+# DisplayVersion : 23H2
+# 
+# Sub-Keys:
+# AppCompatFlags
+# Devices
+# NetworkList
+# ...
+
+# List file associations
+registry_tool(
+    mode="list",
+    path="HKCR:\\.txt"
+)
+# Returns:
+# Registry key [HKCR:\.txt]:
+# Values:
+# (Default)       : txtfile
+# Content Type    : text/plain
+# PerceivedType   : text
+# 
+# Sub-Keys:
+# OpenWithProgids
+# PersistentHandler
+```
+
+### Output Format
+
+```
+Registry key [<path>]:
+Values:
+<name> : <value>
+<name> : <value>
+
+Sub-Keys:
+<subkey1>
+<subkey2>
+```
+
+### Empty Keys
+
+```python
+registry_tool(mode="list", path="HKCU:\\Software\\EmptyKey")
+# Returns:
+# Registry key [HKCU:\Software\EmptyKey]:
+# No values or sub-keys found.
+```
+
+### Error Cases
+
+```python
+# Key not found
+registry_tool(mode="list", path="HKCU:\\NonexistentPath")
+# Returns: "Error listing registry: Cannot find path 'HKCU:\NonexistentPath'..."
+
+# Access denied
+registry_tool(mode="list", path="HKLM:\\SAM\\SAM")
+# Returns: "Error listing registry: Requested registry access is not allowed."
+```
+
+## Practical Use Cases
+
+### Check Dark Mode Setting
+
+```python
+# Read current theme
+registry_tool(
+    mode="get",
+    path="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    name="AppsUseLightTheme"
+)
+# Returns: 0 (dark mode) or 1 (light mode)
+```
+
+### Enable Dark Mode Programmatically
+
+```python
+# Set dark mode for apps
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    name="AppsUseLightTheme",
+    value="0",
+    type="DWord"
+)
+
+# Set dark mode for system
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    name="SystemUsesLightTheme",
+    value="0",
+    type="DWord"
+)
+```
+
+### Store Application Settings
+
+```python
+# Create app settings
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp\\Settings",
+    name="Version",
+    value="1.0",
+    type="String"
+)
+
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp\\Settings",
+    name="FirstRun",
+    value="0",
+    type="DWord"
+)
+
+registry_tool(
+    mode="set",
+    path="HKCU:\\Software\\MyApp\\Settings",
+    name="InstallDate",
+    value="2024-01-15",
+    type="String"
+)
+
+# Read them back
+registry_tool(mode="list", path="HKCU:\\Software\\MyApp\\Settings")
+```
+
+### Uninstall Application Cleanly
+
+```python
+# Remove all app settings
+registry_tool(mode="delete", path="HKCU:\\Software\\MyApp")
+# Returns: 'Registry key [HKCU:\Software\MyApp] deleted.'
+```
+
+### Change File Association
+
+```python
+# Check current .txt association
+registry_tool(mode="get", path="HKCR:\\.txt", name="(Default)")
+# Returns: txtfile
+
+# List available handlers
+registry_tool(mode="list", path="HKCR:\\.txt\\OpenWithProgids")
+
+# Change default handler (requires admin for HKCR)
+registry_tool(
+    mode="set",
+    path="HKCR:\\.txt",
+    name="(Default)",
+    value="Applications\\Code.exe",
+    type="String"
+)
+```
+
+## Security Considerations
+
+### Hive Permissions
+
+| Hive | Abbr. | Typical Access |
+|------|-------|----------------|
+| **HKEY_CURRENT_USER** | HKCU | ✅ Full access (current user) |
+| **HKEY_LOCAL_MACHINE** | HKLM | ⚠️ Read: Yes, Write: Admin only |
+| **HKEY_CLASSES_ROOT** | HKCR | ⚠️ Read: Yes, Write: Admin only |
+| **HKEY_USERS** | HKU | ⚠️ Limited (system users) |
+| **HKEY_CURRENT_CONFIG** | HKCC | ⚠️ Hardware config (rarely modified) |
+
+### Dangerous Keys to Avoid
+
+```python
+# DO NOT DELETE - Breaks Windows boot
+HKLM:\SYSTEM\CurrentControlSet
+HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion
+
+# DO NOT DELETE - Breaks user profile
+HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer
+
+# DO NOT DELETE - Corrupts security
+HKLM:\SAM
+HKLM:\SECURITY
+
+# DO NOT MODIFY - Critical system values
+HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\SubSystems
+```
+
+### Running as Administrator
+
+To modify HKLM or HKCR:
+
+1. Right-click PowerShell → "Run as administrator"
+2. Start Windows-MCP from elevated shell
+3. Registry tool will inherit admin privileges
+
+## Implementation Details
+
+### PowerShell Commands Used
+
+#### Get
+```powershell
+Get-ItemProperty -Path "HKCU:\Software\MyApp" -Name "Version" | Select-Object -ExpandProperty "Version"
+```
+
+#### Set
+```powershell
+if (-not (Test-Path "HKCU:\Software\MyApp")) {
+    New-Item -Path "HKCU:\Software\MyApp" -Force | Out-Null
+}
+Set-ItemProperty -Path "HKCU:\Software\MyApp" -Name "Version" -Value "1.0" -Type String -Force
+```
+
+#### Delete Value
+```powershell
+Remove-ItemProperty -Path "HKCU:\Software\MyApp" -Name "Version" -Force
+```
+
+#### Delete Key
+```powershell
+Remove-Item -Path "HKCU:\Software\MyApp" -Recurse -Force
+```
+
+#### List
+```powershell
+$values = (Get-ItemProperty -Path "HKCU:\Software\MyApp" | Select-Object * -ExcludeProperty PS* | Format-List | Out-String).Trim()
+$subkeys = (Get-ChildItem -Path "HKCU:\Software\MyApp" | Select-Object -ExpandProperty PSChildName) -join "`n"
+if ($values) { Write-Output "Values:`n$values" }
+if ($subkeys) { Write-Output "`nSub-Keys:`n$subkeys" }
+```
+
+### Path Quoting
+
+Paths are quoted using `ps_quote()` to prevent injection:
+
+```python
+from windows_mcp.desktop.utils import ps_quote
+
+q_path = ps_quote("HKCU:\\Software\\MyApp")
+# Returns: '"HKCU:\Software\MyApp"'
+```
+
+## Related Tools
+
+- **PowerShell**: Direct registry access with full cmdlet control:
+  ```powershell
+  Get-ItemProperty -Path "HKCU:\Software\*" -Recurse
+  ```
+- **FileSystem**: Similar structured operations for files
+- **Process**: Manage processes that read/write registry
+- **Snapshot**: Capture GUI state of Registry Editor (regedit.exe)

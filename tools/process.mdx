@@ -1,0 +1,428 @@
+---
+title: 'Process'
+description: 'List and manage running Windows processes'
+icon: 'list-check'
+---
+
+## Overview
+
+The **Process** tool provides process management capabilities with two modes: listing running processes with detailed metrics, and terminating processes by PID or name.
+
+<CardGroup cols={2}>
+  <Card title="List" icon="table" href="#list-mode">
+    View running processes with CPU and memory usage
+  </Card>
+  <Card title="Kill" icon="skull-crossbones" href="#kill-mode">
+    Terminate processes by PID or name
+  </Card>
+</CardGroup>
+
+## Function Signature
+
+```python
+def process_tool(
+    mode: Literal["list", "kill"],
+    name: str | None = None,
+    pid: int | None = None,
+    sort_by: Literal["memory", "cpu", "name"] = "memory",
+    limit: int = 20,
+    force: bool | str = False
+) -> str
+```
+
+## Parameters
+
+<ParamField path="mode" type="Literal['list', 'kill']" required>
+  Operation mode:
+  - `list`: Display running processes with metrics
+  - `kill`: Terminate processes
+</ParamField>
+
+<ParamField path="name" type="string">
+  Process name for filtering or termination. Uses fuzzy matching with 60% threshold.
+  - For **list**: Filters results to matching processes
+  - For **kill**: Terminates all processes with matching name
+  - Examples: `"chrome"`, `"notepad"`, `"python"`
+</ParamField>
+
+<ParamField path="pid" type="integer">
+  Process ID for termination. Only used in `kill` mode.
+  - Terminates the specific process with this PID
+  - More precise than name-based killing
+</ParamField>
+
+<ParamField path="sort_by" type="Literal['memory', 'cpu', 'name']" default="memory">
+  Sorting criterion for `list` mode:
+  - `memory`: Sort by RAM usage (descending, default)
+  - `cpu`: Sort by CPU percentage (descending)
+  - `name`: Sort alphabetically (ascending)
+</ParamField>
+
+<ParamField path="limit" type="integer" default="20">
+  Maximum number of processes to display in `list` mode.
+  - Range: 1-1000 recommended
+  - Higher values may produce verbose output
+</ParamField>
+
+<ParamField path="force" type="boolean" default="false">
+  Force kill flag for `kill` mode:
+  - `false`: Graceful termination (allows cleanup, default)
+  - `true`: Immediate termination (may lose unsaved data)
+</ParamField>
+
+## List Mode
+
+Displays running processes with CPU and memory metrics in a tabular format.
+
+### Examples
+
+```python
+# List top 20 processes by memory
+process_tool(mode="list")
+# Returns:
+# Processes (20 shown):
+# PID    Name               CPU%    Memory
+# 1234   chrome.exe         5.2%    1024.3 MB
+# 5678   Code.exe           3.1%    856.7 MB
+# 9012   firefox.exe        2.8%    742.1 MB
+# ...
+
+# List top 10 by CPU usage
+process_tool(mode="list", sort_by="cpu", limit=10)
+# Returns:
+# Processes (10 shown):
+# PID    Name               CPU%    Memory
+# 3456   python.exe         45.2%   234.5 MB
+# 7890   node.exe           23.1%   512.3 MB
+# ...
+
+# Filter by name
+process_tool(mode="list", name="chrome")
+# Returns:
+# Processes (8 shown):
+# PID    Name               CPU%    Memory
+# 1234   chrome.exe         5.2%    1024.3 MB
+# 2345   chrome.exe         3.1%    512.8 MB
+# 3456   chrome.exe         1.5%    256.4 MB
+# ...
+
+# Sort alphabetically
+process_tool(mode="list", sort_by="name", limit=50)
+# Returns processes in A-Z order
+```
+
+### Output Format
+
+Tabular output with 4 columns:
+
+| Column | Description |
+|--------|-------------|
+| **PID** | Process ID (unique identifier) |
+| **Name** | Process executable name |
+| **CPU%** | Current CPU usage percentage |
+| **Memory** | RAM usage in megabytes |
+
+### Fuzzy Name Matching
+
+Uses `thefuzz` library with 60% partial ratio threshold:
+
+```python
+from thefuzz import fuzz
+
+# Examples that match:
+fuzz.partial_ratio("chrome", "chrome.exe")  # 100%
+fuzz.partial_ratio("code", "Code.exe")     # 100%
+fuzz.partial_ratio("note", "notepad.exe")  # 80%
+```
+
+### Error Cases
+
+```python
+# No processes found
+process_tool(mode="list", name="nonexistent")
+# Returns: "No processes found matching nonexistent."
+
+# No processes running (unlikely)
+process_tool(mode="list")
+# Returns: "No processes found."
+```
+
+## Kill Mode
+
+Terminates one or more processes by PID or name.
+
+### Termination Methods
+
+<ParamField path="force=False" type="Graceful Termination">
+  Sends `SIGTERM` signal:
+  - Allows process to clean up resources
+  - Saves unsaved data (if implemented)
+  - Closes file handles properly
+  - May take a few seconds
+  - **Recommended** for most cases
+</ParamField>
+
+<ParamField path="force=True" type="Force Kill">
+  Sends `SIGKILL` signal:
+  - Immediate termination
+  - No cleanup or saving
+  - May corrupt files or leave temp files
+  - Use for **hung/unresponsive** processes
+</ParamField>
+
+### Examples
+
+```python
+# Kill by PID (graceful)
+process_tool(mode="kill", pid=1234)
+# Returns: "Terminated: chrome.exe (PID 1234)"
+
+# Force kill by PID
+process_tool(mode="kill", pid=5678, force=True)
+# Returns: "Force killed: notepad.exe (PID 5678)"
+
+# Kill by name (all instances)
+process_tool(mode="kill", name="chrome")
+# Returns: "Terminated: chrome.exe (PID 1234), chrome.exe (PID 2345), chrome.exe (PID 3456)"
+
+# Force kill all instances
+process_tool(mode="kill", name="python", force=True)
+# Returns: "Force killed: python.exe (PID 7890), python.exe (PID 8901)"
+```
+
+### Error Cases
+
+```python
+# No parameters provided
+process_tool(mode="kill")
+# Returns: "Error: Provide either pid or name parameter for kill mode."
+
+# PID not found
+process_tool(mode="kill", pid=99999)
+# Returns: "No process with PID 99999 found."
+
+# Access denied (system process)
+process_tool(mode="kill", pid=4)
+# Returns: "Access denied to kill PID 4. Try running as administrator."
+
+# Name not found
+process_tool(mode="kill", name="nonexistent")
+# Returns: 'No process matching "nonexistent" found or access denied.'
+```
+
+<Warning>
+**Permission Errors**: Some system processes (e.g., `System`, `csrss.exe`, `smss.exe`) require **administrator privileges** to terminate. The tool will return an access denied error if insufficient permissions.
+</Warning>
+
+## Practical Use Cases
+
+### Find Resource Hogs
+
+```python
+# Find top memory consumers
+process_tool(mode="list", sort_by="memory", limit=5)
+
+# Find high CPU processes
+process_tool(mode="list", sort_by="cpu", limit=10)
+```
+
+### Kill Hung Applications
+
+```python
+# Check if app is running
+process_tool(mode="list", name="unresponsive_app")
+
+# Force kill if hung
+process_tool(mode="kill", name="unresponsive_app", force=True)
+```
+
+### Clean Up Browser Tabs
+
+```python
+# See how many Chrome processes are running
+process_tool(mode="list", name="chrome")
+# Returns: "Processes (15 shown)" - too many tabs!
+
+# Kill all Chrome instances
+process_tool(mode="kill", name="chrome")
+```
+
+### Monitor Specific Process
+
+```python
+# Find PID of your Python script
+process_tool(mode="list", name="python")
+# Note the PID, e.g., 1234
+
+# Kill specific instance later
+process_tool(mode="kill", pid=1234)
+```
+
+### Terminate Background Services
+
+```python
+# List all node processes
+process_tool(mode="list", name="node")
+
+# Kill development server by PID
+process_tool(mode="kill", pid=5678)
+```
+
+## Implementation Details
+
+### Process Enumeration
+
+Uses `psutil` library for cross-platform process management:
+
+```python
+import psutil
+
+for p in psutil.process_iter(["pid", "name", "cpu_percent", "memory_info"]):
+    try:
+        info = p.info
+        mem_mb = info["memory_info"].rss / (1024 * 1024)
+        procs.append({
+            "pid": info["pid"],
+            "name": info["name"] or "Unknown",
+            "cpu": info["cpu_percent"] or 0,
+            "mem_mb": round(mem_mb, 1)
+        })
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
+        continue  # Skip inaccessible processes
+```
+
+### Tabular Output
+
+Uses `tabulate` library for formatted tables:
+
+```python
+from tabulate import tabulate
+
+table = tabulate(
+    [[p["pid"], p["name"], f"{p['cpu']:.1f}%", f"{p['mem_mb']:.1f} MB"] for p in procs],
+    headers=["PID", "Name", "CPU%", "Memory"],
+    tablefmt="simple"
+)
+```
+
+### Sorting
+
+```python
+sort_key = {
+    "memory": lambda x: x["mem_mb"],
+    "cpu": lambda x: x["cpu"],
+    "name": lambda x: x["name"].lower()
+}
+procs.sort(key=sort_key[sort_by], reverse=(sort_by != "name"))
+```
+
+### Termination Logic
+
+```python
+import psutil
+
+p = psutil.Process(pid)
+if force:
+    p.kill()       # SIGKILL - immediate
+else:
+    p.terminate()  # SIGTERM - graceful
+```
+
+## Security Considerations
+
+### Protected Processes
+
+Certain system-critical processes cannot be killed without admin rights:
+
+- **System** (PID 4): Core kernel process
+- **csrss.exe**: Client/Server Runtime Subsystem
+- **smss.exe**: Session Manager Subsystem
+- **services.exe**: Service Control Manager
+- **lsass.exe**: Local Security Authority Subsystem
+
+Attempting to kill these will return:
+```
+Access denied to kill PID <pid>. Try running as administrator.
+```
+
+### Running as Administrator
+
+To terminate protected processes:
+
+1. Right-click command prompt/PowerShell
+2. Select "Run as administrator"
+3. Launch Windows-MCP from elevated shell
+4. Process tool will now have elevated privileges
+
+<Warning>
+**System Stability**: Killing system processes can cause:
+- Blue Screen of Death (BSOD)
+- System instability
+- Data loss
+- Forced reboot
+
+Only kill system processes if you know what you're doing.
+</Warning>
+
+## Performance Tips
+
+### Efficient Filtering
+
+```python
+# Inefficient - retrieves all processes
+process_tool(mode="list", limit=1000)
+# Then manually search output
+
+# Efficient - filters during enumeration
+process_tool(mode="list", name="chrome", limit=50)
+```
+
+### CPU Monitoring
+
+CPU percentage is instantaneous and may fluctuate:
+
+```python
+# First call may show 0% (needs time to measure)
+process_tool(mode="list", sort_by="cpu")
+
+# Run twice for accurate CPU readings
+process_tool(mode="list", sort_by="cpu")
+```
+
+### Batch Termination
+
+Killing by name is more efficient than multiple PID kills:
+
+```python
+# Inefficient
+process_tool(mode="kill", pid=1234)
+process_tool(mode="kill", pid=2345)
+process_tool(mode="kill", pid=3456)
+
+# Efficient
+process_tool(mode="kill", name="chrome")  # Kills all at once
+```
+
+## Comparison with Task Manager
+
+| Feature | Process Tool | Task Manager |
+|---------|-------------|-------------|
+| **List processes** | ✅ Tabular output | ✅ GUI with graphs |
+| **CPU usage** | ✅ Percentage | ✅ Real-time graph |
+| **Memory usage** | ✅ MB precise | ✅ MB + graph |
+| **Sort by metrics** | ✅ memory/cpu/name | ✅ Click headers |
+| **Kill processes** | ✅ By PID or name | ✅ Right-click → End Task |
+| **Fuzzy search** | ✅ Name matching | ❌ Exact only |
+| **Batch kill** | ✅ All matching name | ❌ One at a time |
+| **Scriptable** | ✅ Programmatic | ❌ Manual only |
+| **Admin elevation** | ✅ Auto-requests | ✅ UAC prompt |
+
+## Related Tools
+
+- **PowerShell**: More advanced process queries:
+  ```powershell
+  Get-Process | Where-Object { $_.CPU -gt 50 } | Sort-Object CPU -Descending
+  ```
+- **App**: Launch and manage application windows
+- **Snapshot**: Capture current desktop state including process windows
+- **Shortcut**: Use `Ctrl+Shift+Esc` to open Task Manager GUI

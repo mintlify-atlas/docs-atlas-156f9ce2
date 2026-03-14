@@ -1,0 +1,332 @@
+---
+title: 'Qwen Code'
+description: 'Install Windows-MCP on Qwen Code CLI'
+---
+
+## Prerequisites
+
+- Node.js and npm installed
+- UV package manager installed (`pip install uv`)
+- Python 3.13+
+
+## Installation Steps
+
+<Steps>
+  <Step title="Install Qwen Code">
+    Install Qwen Code globally using npm:
+    ```bash
+    npm install -g @qwen-code/qwen-code@latest
+    ```
+  </Step>
+
+  <Step title="Locate Settings File">
+    Navigate to the Qwen configuration directory:
+    ```bash
+    cd %USERPROFILE%\.qwen
+    ```
+
+    Or open it in File Explorer:
+    ```
+    %USERPROFILE%\.qwen
+    ```
+  </Step>
+
+  <Step title="Edit settings.json">
+    Open `settings.json` in your preferred text editor and add the Windows-MCP configuration.
+
+    <Tabs>
+      <Tab title="PyPI (Recommended)">
+        ```json
+        {
+          "mcpServers": {
+            "windows-mcp": {
+              "command": "uvx",
+              "args": [
+                "windows-mcp"
+              ]
+            }
+          }
+        }
+        ```
+      </Tab>
+
+      <Tab title="From Source">
+        ```json
+        {
+          "mcpServers": {
+            "windows-mcp": {
+              "command": "uv",
+              "args": [
+                "--directory",
+                "<path to the windows-mcp directory>",
+                "run",
+                "windows-mcp"
+              ]
+            }
+          }
+        }
+        ```
+
+        Replace `<path to the windows-mcp directory>` with the full path where you cloned the repository.
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Save and Restart">
+    1. Save the `settings.json` file
+    2. Restart Qwen Code in your terminal
+    3. Verify Windows-MCP is loaded and tools are available
+  </Step>
+</Steps>
+
+## Configuration Examples
+
+### Basic Configuration
+
+Minimal configuration with PyPI installation:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### Source Installation
+
+For development or customization:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "C:\\Users\\YourUsername\\Projects\\Windows-MCP",
+        "run",
+        "windows-mcp"
+      ]
+    }
+  }
+}
+```
+
+### With Environment Variables
+
+Disable telemetry or configure other options:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "ANONYMIZED_TELEMETRY": "false"
+      }
+    }
+  }
+}
+```
+
+### Remote Mode
+
+Connect to remote Windows VMs via windowsmcp.io:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": [
+        "windows-mcp"
+      ],
+      "env": {
+        "MODE": "remote",
+        "SANDBOX_ID": "your-sandbox-id",
+        "API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Multiple MCP Servers
+
+Combine Windows-MCP with other MCP servers:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "uvx",
+      "args": ["windows-mcp"]
+    },
+    "filesystem": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "/path/to/allowed/files"]
+    },
+    "git": {
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-git"]
+    }
+  }
+}
+```
+
+## Troubleshooting
+
+### Server Not Loading
+
+<Note>
+First-time installation requires dependency setup which may take 1-2 minutes. Restart Qwen Code if it times out.
+</Note>
+
+**Common issues and solutions**:
+
+1. **UV not found**:
+   ```bash
+   # Verify UV is installed
+   uv --version
+   
+   # If not found, install it
+   pip install uv
+   ```
+
+2. **Invalid JSON syntax**:
+   - Ensure all strings are quoted
+   - Check for trailing commas
+   - No comments allowed in JSON
+   - Validate at [jsonlint.com](https://jsonlint.com)
+
+3. **Path issues**:
+   - Use double backslashes: `C:\\Users\\...`
+   - Or use forward slashes: `C:/Users/...`
+   - Verify the directory exists
+
+### PATH Environment Variable
+
+If `uvx` is not found in PATH:
+
+```bash
+# Find UV location
+where uv
+```
+
+Use the absolute path in settings.json:
+
+```json
+{
+  "mcpServers": {
+    "windows-mcp": {
+      "command": "C:\\Users\\YourUsername\\.local\\bin\\uv.exe",
+      "args": ["run", "windows-mcp"]
+    }
+  }
+}
+```
+
+### Tools Not Appearing
+
+If Windows-MCP tools aren't available:
+
+1. **Check terminal output** for error messages
+2. **Verify MCP server started**:
+   - Look for "Windows-MCP server started" message
+   - Check for any Python errors
+3. **Restart Qwen Code** completely
+4. **Check file location**:
+   ```bash
+   dir %USERPROFILE%\.qwen\settings.json
+   ```
+
+### Permission Issues
+
+<Warning>
+Windows-MCP runs with the same permissions as Qwen Code. Avoid running as Administrator unless necessary.
+</Warning>
+
+If you see permission errors:
+- Run Qwen Code with standard user permissions
+- Check Windows User Account Control (UAC) settings
+- Verify file system permissions
+
+### Python Version
+
+Ensure Python 3.13+ is installed:
+
+```bash
+python --version
+```
+
+If you have multiple Python versions, UV should handle this automatically.
+
+## Verifying Installation
+
+After configuration, test Windows-MCP:
+
+1. Start Qwen Code:
+   ```bash
+   qwen-code
+   ```
+
+2. Check available tools:
+   ```
+   What MCP tools are available?
+   ```
+
+3. Test a simple command:
+   ```
+   Use Snapshot tool to capture my desktop state
+   ```
+
+You should see output indicating Windows-MCP tools are available:
+- Click
+- Type
+- Scroll
+- Move
+- Shortcut
+- Snapshot
+- App
+- Shell
+- And more...
+
+## Configuration File Location
+
+The Qwen Code settings file is located at:
+
+```
+%USERPROFILE%\.qwen\settings.json
+```
+
+Full path example:
+```
+C:\Users\YourUsername\.qwen\settings.json
+```
+
+<Note>
+If the `settings.json` file doesn't exist, create it manually with the basic configuration structure.
+</Note>
+
+## Updating Qwen Code
+
+To update to the latest version:
+
+```bash
+npm update -g @qwen-code/qwen-code@latest
+```
+
+## Additional Resources
+
+- [Qwen Code GitHub Repository](https://github.com/qwen-code/qwen-code)
+- [Windows-MCP GitHub Repository](https://github.com/CursorTouch/Windows-MCP)
+- [Community Discord](https://discord.com/invite/Aue9Yj2VzS)
