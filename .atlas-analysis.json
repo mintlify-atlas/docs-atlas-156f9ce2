@@ -1,0 +1,157 @@
+{
+  "projectType": "framework",
+  "projectName": "Windows-MCP",
+  "projectDescription": "MCP Server for Computer Use in Windows - enables AI agents to interact with Windows OS through a rich toolset for desktop automation",
+  "theme": "aspen",
+  "primaryColor": "#f58a23",
+  "lightColor": "#fbb86e",
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Installation",
+            "pages": [
+              "installation/overview",
+              "installation/claude-desktop",
+              "installation/perplexity",
+              "installation/gemini-cli",
+              "installation/qwen-code",
+              "installation/codex-cli"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/mcp-protocol",
+              "concepts/operating-modes",
+              "concepts/transport-options",
+              "concepts/ui-automation"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/modes",
+              "configuration/transport",
+              "configuration/environment-variables",
+              "configuration/telemetry"
+            ]
+          },
+          {
+            "group": "Security",
+            "pages": [
+              "security/overview",
+              "security/deployment-best-practices",
+              "security/tool-risk-assessment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Tool Reference",
+        "groups": [
+          {
+            "group": "Overview",
+            "pages": [
+              "tools/overview"
+            ]
+          },
+          {
+            "group": "System Tools",
+            "pages": [
+              "tools/app",
+              "tools/shell",
+              "tools/filesystem",
+              "tools/process",
+              "tools/registry"
+            ]
+          },
+          {
+            "group": "UI Interaction",
+            "pages": [
+              "tools/snapshot",
+              "tools/click",
+              "tools/type",
+              "tools/scroll",
+              "tools/move",
+              "tools/shortcut"
+            ]
+          },
+          {
+            "group": "Advanced Tools",
+            "pages": [
+              "tools/scrape",
+              "tools/multiselect",
+              "tools/multiedit",
+              "tools/clipboard",
+              "tools/notification",
+              "tools/wait"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "Development",
+        "groups": [
+          {
+            "group": "Contributing",
+            "pages": [
+              "development/overview",
+              "development/setup",
+              "development/code-style",
+              "development/testing"
+            ]
+          },
+          {
+            "group": "Architecture",
+            "pages": [
+              "architecture/overview",
+              "architecture/desktop-service",
+              "architecture/tree-service",
+              "architecture/uia-wrapper"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "16 MCP tools for comprehensive Windows automation",
+    "Native Windows UI interaction via UIAutomation",
+    "Works with any LLM - no computer vision required",
+    "Local and remote modes for flexible deployment",
+    "DOM mode for efficient browser automation",
+    "Real-time interaction with 0.2-0.9s typical latency",
+    "Multi-monitor and virtual desktop support",
+    "Lightweight with minimal dependencies"
+  ],
+  "publicApiSurface": [
+    "App - Launch and manage Windows applications",
+    "Shell - Execute PowerShell commands",
+    "FileSystem - File and directory operations",
+    "Snapshot - Capture desktop state and screenshots",
+    "Click - Mouse click interactions",
+    "Type - Keyboard text input",
+    "Scroll - Scroll UI elements",
+    "Move - Mouse movement and drag operations",
+    "Shortcut - Execute keyboard shortcuts",
+    "Wait - Pause execution",
+    "Scrape - Fetch web content",
+    "MultiSelect - Select multiple UI elements",
+    "MultiEdit - Edit multiple input fields",
+    "Clipboard - Clipboard operations",
+    "Process - List and manage processes",
+    "Notification - Send Windows toast notifications",
+    "Registry - Windows Registry operations"
+  ]
+}
